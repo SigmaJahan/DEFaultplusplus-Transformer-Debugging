@@ -18,7 +18,8 @@ warnings.filterwarnings("ignore")
 
 PKG = Path(__file__).resolve().parent
 DATA_DIR = PKG / "data"
-RESULTS_DIR = PKG / "results"
+REPO_ROOT = PKG.parents[1]
+RESULTS_DIR = REPO_ROOT / "results" / "rq3_ablation"
 N_SPLITS = 5
 RNG = 42
 

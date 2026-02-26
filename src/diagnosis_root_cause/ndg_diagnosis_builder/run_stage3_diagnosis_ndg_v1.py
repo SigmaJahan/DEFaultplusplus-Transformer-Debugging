@@ -33,9 +33,9 @@ from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
 
-ROOT = Path(__file__).resolve().parents[2]
-VARIANT_DIR = ROOT / "detection_categorization_xai" / "data"
-ORIG_DIR = ROOT / "diagnosis_root_cause" / "data"
+ROOT = Path(__file__).resolve().parents[3]
+VARIANT_DIR = ROOT / "src" / "detection_categorization_xai" / "data"
+ORIG_DIR = ROOT / "src" / "diagnosis_root_cause" / "data"
 RESULTS_DIR = ROOT / "results" / "stage_3_diagnosis"
 N_SPLITS = 5
 RNG = 42
@@ -1172,7 +1172,7 @@ def main():
     p.add_argument(
         "--feature_core_map",
         type=Path,
-        default=(ROOT / "diagnosis_root_cause" / "ndg_stage3" / "feature_core_map.md"),
+        default=(ROOT / "src" / "diagnosis_root_cause" / "ndg_stage3" / "feature_core_map.md"),
         help="Path to feature_core_map.md for authoritative subsystem mapping.",
     )
     args = p.parse_args()

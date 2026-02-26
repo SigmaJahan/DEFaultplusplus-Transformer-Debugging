@@ -8,7 +8,7 @@
 #   - NDG results in ../results/stage_3_diagnosis/
 #
 # Usage:
-#   cd comparison_with_defaultplusplus/
+#   cd src/comparison_with_defaultplusplus/
 #   bash run_all.sh
 
 set -euo pipefail

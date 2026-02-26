@@ -26,7 +26,7 @@ from matplotlib.lines import Line2D
 from pathlib import Path
 
 # -- paths --
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "results"
 OUT = RESULTS / "thesis_figures"
 OUT.mkdir(exist_ok=True)

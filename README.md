@@ -1,35 +1,39 @@
 # DEFault++ Fault Debugging Study Artifact
 
-![Artifact](https://img.shields.io/badge/artifact-study-blue)
-![Access](https://img.shields.io/badge/access-private-critical)
-![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
-
 Codebase and curated datasets for the DEFault++ fault debugging study.
 
-## Scope
+## Artifact Structure
 
-This repository contains the end-to-end study pipeline across detection, categorization/XAI, diagnosis/root-cause, and RQ6 comparison.
+- `src/`: executable code for study stages
+- `results/`: stage outputs and legacy frozen outputs
+- `scripts/`: root-level execution wrappers
 
-Included:
-- `detection_categorization_xai/`
-- `diagnosis_root_cause/`
-- `comparison_with_defaultplusplus/`
-- `defaultplusplus_results/` (frozen historical outputs)
-- `results/` (canonicalized output layout)
-- `scripts/` (top-level execution entry points)
+## Source Layout
 
-## Quick Start
+- `src/detection_categorization_xai/`: Stage 1 detection and Stage 2 categorization/XAI
+- `src/diagnosis_root_cause/`: Stage 3 diagnosis and NDG workflows
+- `src/comparison_with_defaultplusplus/`: RQ6 baseline comparisons
 
-Run from repository root:
+## Results Layout
+
+- `results/stage_1_detection/`
+- `results/stage_2_categorization/`
+- `results/stage_2_1_categorization_xai/`
+- `results/stage_3_diagnosis/`
+- `results/rq3_ablation/`
+- `results/rq6/`
+- `results/legacy/defaultplusplus_results/` (frozen historical outputs)
+
+## Environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r detection_categorization_xai/requirements.txt
-pip install -r diagnosis_root_cause/requirements.txt
+pip install -r src/detection_categorization_xai/requirements.txt
+pip install -r src/diagnosis_root_cause/requirements.txt
 ```
 
-Core stage execution:
+## Execution
 
 ```bash
 bash scripts/run_stage1_preprocess.sh
@@ -42,21 +46,6 @@ bash scripts/run_stage3_ndg_cli.sh
 bash scripts/run_rq6_baseline_comparison.sh
 ```
 
-## Repository Layout
-
-- `detection_categorization_xai/`: Stage-1 detection and Stage-2 categorization/XAI
-- `diagnosis_root_cause/`: Stage-3 diagnosis, signature matching, NDG
-- `comparison_with_defaultplusplus/`: RQ6 baseline comparison workflows
-- `defaultplusplus_results/`: preserved original outputs
-- `results/`: canonicalized stage outputs for stable script paths
-- `manifests/`: file-level integrity manifests
-
 ## Data Policy
 
-This repository retains code and final/processed data required for replication while avoiding unnecessary transient artifacts.
-
-## Integrity
-
-- `manifests/pre_patch_sha256.txt`
-- `manifests/post_patch_sha256.txt`
-- `manifests/changes_since_copy.txt`
+Includes code, curated datasets, and final study outputs required for reproducibility. Excludes unnecessary transient artifacts.

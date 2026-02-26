@@ -22,7 +22,7 @@ if str(PKG_PARENT) not in sys.path:
 
 from ndg_stage3.mapping import display_name, parse_feature_core_map_md, resolve_to_core
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RESULTS_ROOT = ROOT / "results"
 STAGE1_DIR = RESULTS_ROOT / "stage_1_detection"
 STAGE2_DIR = RESULTS_ROOT / "stage_2_categorization"
