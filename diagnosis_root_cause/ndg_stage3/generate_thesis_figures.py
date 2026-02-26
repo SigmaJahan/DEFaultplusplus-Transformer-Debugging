@@ -39,8 +39,8 @@ enc_det = load("stage_1_detection/enc_detection.json")
 dec_det = load("stage_1_detection/dec_detection.json")
 enc_cat = load("stage_2_categorization/enc_categorization.json")
 dec_cat = load("stage_2_categorization/dec_categorization.json")
-xai_enc = load("stage_2.1_categorization_xai/xai_enc_categorization.json")
-xai_dec = load("stage_2.1_categorization_xai/xai_dec_categorization.json")
+xai_enc = load("stage_2_1_categorization_xai/xai_enc_categorization.json")
+xai_dec = load("stage_2_1_categorization_xai/xai_dec_categorization.json")
 
 # -- muted academic palette --
 C_ENC = "#5B7EA4"      # muted steel blue

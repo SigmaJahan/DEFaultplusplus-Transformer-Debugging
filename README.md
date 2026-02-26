@@ -11,10 +11,10 @@ Standalone replication artifact for the DEFault++ fault debugging study.
 This repository contains the end-to-end study pipeline across detection, categorization/XAI, diagnosis/root-cause, and RQ6 comparison.
 
 Included:
-- `1_Detection_Categorization_XAI/`
-- `2_Diagnosis_Root_Cause/`
-- `3_Comparison_with_defaultplusplus/`
-- `default++_results/` (frozen historical outputs)
+- `detection_categorization_xai/`
+- `diagnosis_root_cause/`
+- `comparison_with_defaultplusplus/`
+- `defaultplusplus_results/` (frozen historical outputs)
 - `results/` (canonicalized output layout)
 - `scripts/` (top-level execution entry points)
 
@@ -25,8 +25,8 @@ Run from repository root:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r 1_Detection_Categorization_XAI/requirements.txt
-pip install -r 2_Diagnosis_Root_Cause/requirements.txt
+pip install -r detection_categorization_xai/requirements.txt
+pip install -r diagnosis_root_cause/requirements.txt
 ```
 
 Core stage execution:
@@ -44,10 +44,10 @@ bash scripts/run_rq6_baseline_comparison.sh
 
 ## Repository Layout
 
-- `1_Detection_Categorization_XAI/`: Stage-1 detection and Stage-2 categorization/XAI
-- `2_Diagnosis_Root_Cause/`: Stage-3 diagnosis, signature matching, NDG
-- `3_Comparison_with_defaultplusplus/`: RQ6 baseline comparison workflows
-- `default++_results/`: preserved original outputs
+- `detection_categorization_xai/`: Stage-1 detection and Stage-2 categorization/XAI
+- `diagnosis_root_cause/`: Stage-3 diagnosis, signature matching, NDG
+- `comparison_with_defaultplusplus/`: RQ6 baseline comparison workflows
+- `defaultplusplus_results/`: preserved original outputs
 - `results/`: canonicalized stage outputs for stable script paths
 - `manifests/`: file-level integrity manifests
 

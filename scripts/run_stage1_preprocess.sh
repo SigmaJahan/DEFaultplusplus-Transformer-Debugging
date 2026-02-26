@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT/1_Detection_Categorization_XAI"
+cd "$ROOT/detection_categorization_xai"
 python preprocess.py "$@"

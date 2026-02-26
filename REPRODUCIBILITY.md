@@ -10,8 +10,8 @@ Install dependencies:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r 1_Detection_Categorization_XAI/requirements.txt
-pip install -r 2_Diagnosis_Root_Cause/requirements.txt
+pip install -r detection_categorization_xai/requirements.txt
+pip install -r diagnosis_root_cause/requirements.txt
 ```
 
 ## Execution Order
@@ -31,9 +31,9 @@ bash scripts/run_rq6_baseline_comparison.sh
 
 ## Expected Output Locations
 
-- Stage outputs: `results/stage_1_detection/`, `results/stage_2_categorization/`, `results/stage_2.1_categorization_xai/`, `results/stage_3_diagnosis/`
-- Frozen legacy outputs: `default++_results/`
-- RQ6 artifacts: `3_Comparison_with_defaultplusplus/results/`
+- Stage outputs: `results/stage_1_detection/`, `results/stage_2_categorization/`, `results/stage_2_1_categorization_xai/`, `results/stage_3_diagnosis/`
+- Frozen legacy outputs: `defaultplusplus_results/`
+- RQ6 artifacts: `comparison_with_defaultplusplus/results/`
 
 ## Verification
 

@@ -4,11 +4,11 @@
 #
 # Prerequisites:
 #   - Python 3.10+ with packages: numpy, pandas, scikit-learn, xgboost, matplotlib
-#   - Pickle data in ../1_Detection_Categorization_XAI/data/
+#   - Pickle data in ../detection_categorization_xai/data/
 #   - NDG results in ../results/stage_3_diagnosis/
 #
 # Usage:
-#   cd 3_Comparison_with_defaultplusplus/
+#   cd comparison_with_defaultplusplus/
 #   bash run_all.sh
 
 set -euo pipefail

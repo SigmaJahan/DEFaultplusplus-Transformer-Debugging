@@ -1,7 +1,7 @@
 """RQ6: Baseline comparison experiments for DEFault++ paper.
 
 Usage:
-  cd 3_Comparison_with_defaultplusplus/
+  cd comparison_with_defaultplusplus/
   python run_rq6_baselines.py
 """
 import json, pickle, re, time, warnings
@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 
 HERE = Path(__file__).resolve().parent
 BASE = HERE.parent  # package root
-DATA_DIR = BASE / "1_Detection_Categorization_XAI" / "data"
+DATA_DIR = BASE / "detection_categorization_xai" / "data"
 EXPORT_DIR = HERE / "data"  # config/mapping JSONs
 RESULTS_DIR = HERE / "results"
 DIAG_DIR = BASE / "results" / "stage_3_diagnosis"

@@ -5,7 +5,7 @@ Self-contained pipeline for fault detection and categorization of transformer mu
 ## Directory Structure
 
 ```
-1_Detection_Categorization_XAI/
+detection_categorization_xai/
   data/                          # Preprocessed pkl + source CSV files
     enc_v1_detection.pkl         # Encoder detection (9560 x 546)
     enc_v1_categorization.pkl    # Encoder categorization (9455 x 546, 11 classes)

@@ -29,7 +29,7 @@ This package implements **Stage 3** of the FrankenFormer pipeline: root-cause di
 Stage 1/2 results (from `../results/`):
 - `stage_1_detection/enc_detection.json`, `dec_detection.json`
 - `stage_2_categorization/enc_categorization.json`, `dec_categorization.json`
-- `stage_2.1_categorization_xai/xai_enc_categorization.json`, `xai_dec_categorization.json`
+- `stage_2_1_categorization_xai/xai_enc_categorization.json`, `xai_dec_categorization.json`
 
 Feature mapping:
 - `ndg_stage3/feature_core_map.md`
@@ -56,10 +56,10 @@ pip install -r requirements.txt
 python -m ndg_stage3.cli \
   --enc_detection     ../results/stage_1_detection/enc_detection.json \
   --enc_categorization ../results/stage_2_categorization/enc_categorization.json \
-  --xai_enc           ../results/stage_2.1_categorization_xai/xai_enc_categorization.json \
+  --xai_enc           ../results/stage_2_1_categorization_xai/xai_enc_categorization.json \
   --dec_detection     ../results/stage_1_detection/dec_detection.json \
   --dec_categorization ../results/stage_2_categorization/dec_categorization.json \
-  --xai_dec           ../results/stage_2.1_categorization_xai/xai_dec_categorization.json \
+  --xai_dec           ../results/stage_2_1_categorization_xai/xai_dec_categorization.json \
   --feature_core_map  ndg_stage3/feature_core_map.md \
   --out_dir           ../results/stage_3_diagnosis \
   --plots
