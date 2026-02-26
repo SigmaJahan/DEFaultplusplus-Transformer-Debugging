@@ -1,6 +1,6 @@
 # Diagnosis JSON Builder (mutation-grounded) — NDG-aligned mapping
 
-This script is a patched version of `run_stage3_diagnosis_old.py` that generates:
+This script is a patched version of the previous diagnosis builder that generates:
 
 - `results/enc_diagnosis.json`
 - `results/dec_diagnosis.json`
@@ -10,14 +10,14 @@ It differs from the old version in one critical way:
 It computes `subsystem_impact` and propagation summaries using the **authoritative subsystem mapping**
 from `feature_core_map.md` (instead of a keyword heuristic).
 
-These diagnosis JSONs are the inputs consumed by **NDG Stage-3 V3** to add:
+These diagnosis JSONs are the inputs consumed by the NDG builder to add:
 - `SIGNATURE` edges (FaultFamily → CoreFeature; direction + effect size)
 - `IMPACTS` edges (FaultFamily → Subsystem; impact weights)
 
 ## Inputs
 
-Required (same as your existing Stage-3 diagnosis script expects):
-- Stage-1/Stage-2 prediction + report artifacts already produced by your pipeline (as configured inside the script)
+Required (same as your existing diagnosis script expects):
+- detection/categorization/explanation artifacts already produced by your pipeline (as configured inside the script)
 - The run/report directories referenced in the script constants (DATA_DIR / RESULTS_DIR)
 
 New required for NDG alignment:
@@ -36,24 +36,24 @@ Each `{arch}_diagnosis.json` includes:
 From the directory containing your JSON artifacts:
 
 ```bash
-python run_stage3_diagnosis_ndg_v1.py --arch both --feature_core_map feature_core_map.md
+python build_diagnosis_ndg.py --arch both --feature_core_map feature_core_map.md
 ```
 
 You can also run one side:
 
 ```bash
-python run_stage3_diagnosis_ndg_v1.py --arch enc --feature_core_map feature_core_map.md
-python run_stage3_diagnosis_ndg_v1.py --arch dec --feature_core_map feature_core_map.md
+python build_diagnosis_ndg.py --arch enc --feature_core_map feature_core_map.md
+python build_diagnosis_ndg.py --arch dec --feature_core_map feature_core_map.md
 ```
 
 The script writes results to the existing `RESULTS_DIR` used inside the script (typically `results/`).
 
-## Integration with NDG Stage-3 V3
+## Integration with NDG
 
 After generating the diagnosis JSONs, run the NDG builder (V3) with:
 
 ```bash
-python -m ndg_stage3.cli \
+python -m ndg_graph.cli \
   --enc_detection enc_detection.json \
   --enc_categorization enc_categorization.json \
   --xai_enc xai_enc_categorization.json \

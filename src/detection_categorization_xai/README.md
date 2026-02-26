@@ -17,6 +17,6 @@ From repository root:
 ```bash
 cd src/detection_categorization_xai
 python preprocess.py
-python run_classifiers.py --data data/enc_v1_detection.pkl --out ../../results/stage_1_detection/enc_detection.json
-python run_xai.py --data data/enc_v1_categorization.pkl --results ../../results/stage_2_categorization/enc_categorization.json --out ../../results/stage_2_1_categorization_xai/xai_enc_categorization.json
+python run_classifiers.py --data data/enc_v1_detection.pkl --out ../../results/detection/enc_detection.json
+python run_xai.py --data data/enc_v1_categorization.pkl --results ../../results/categorization/enc_categorization.json --out ../../results/explanations/xai_enc_categorization.json
 ```

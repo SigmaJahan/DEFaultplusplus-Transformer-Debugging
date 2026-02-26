@@ -4,25 +4,24 @@ Codebase and curated datasets for the DEFault++ fault debugging study.
 
 ## Artifact Structure
 
-- `src/`: executable code for study stages
-- `results/`: stage outputs and legacy frozen outputs
+- `src/`: executable study code
+- `results/`: reproducible outputs
 - `scripts/`: root-level execution wrappers
 
 ## Source Layout
 
-- `src/detection_categorization_xai/`: Stage 1 detection and Stage 2 categorization/XAI
-- `src/diagnosis_root_cause/`: Stage 3 diagnosis and NDG workflows
-- `src/comparison_with_defaultplusplus/`: RQ6 baseline comparisons
+- `src/detection_categorization_xai/`: detection, categorization, and XAI workflows
+- `src/diagnosis_root_cause/`: diagnosis and NDG workflows
+- `src/comparison_with_defaultplusplus/`: baseline comparisons
 
 ## Results Layout
 
-- `results/stage_1_detection/`
-- `results/stage_2_categorization/`
-- `results/stage_2_1_categorization_xai/`
-- `results/stage_3_diagnosis/`
-- `results/rq3_ablation/`
-- `results/rq6/`
-- `results/legacy/defaultplusplus_results/` (frozen historical outputs)
+- `results/detection/`
+- `results/categorization/`
+- `results/explanations/`
+- `results/diagnosis/`
+- `results/feature_ablation/`
+- `results/baseline_comparison/`
 
 ## Environment
 
@@ -36,14 +35,14 @@ pip install -r src/diagnosis_root_cause/requirements.txt
 ## Execution
 
 ```bash
-bash scripts/run_stage1_preprocess.sh
-bash scripts/run_stage1_classifiers.sh
-bash scripts/run_stage2_xai.sh
-bash scripts/run_stage2_rq3_ablation.sh
-bash scripts/run_stage3_diagnosis_builder.sh
-bash scripts/run_stage3_signature_matching_rq5.sh
-bash scripts/run_stage3_ndg_cli.sh
-bash scripts/run_rq6_baseline_comparison.sh
+bash scripts/run_preprocess.sh
+bash scripts/run_classifiers.sh
+bash scripts/run_explanations.sh
+bash scripts/run_feature_ablation.sh
+bash scripts/run_diagnosis_builder.sh
+bash scripts/run_signature_matching.sh
+bash scripts/run_diagnosis_graph.sh
+bash scripts/run_baseline_comparison.sh
 ```
 
 ## Data Policy
