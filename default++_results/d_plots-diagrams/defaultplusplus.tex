@@ -1,0 +1,1072 @@
+\chapter{Automated Fault Detection, Categorization, and Diagnosis for Transformer Architectures}
+\label{chapter_defaultpp}
+
+Chapter~\ref{chapter_frankenformer} produced 18{,}870 labeled runs (18{,}695 faulty, 175 clean) spanning encoder and decoder transformers, validated through internal-behavior and end-task kill criteria. The mutation analysis confirmed that transformer faults are detectable in internal diagnostic signals and that impact-invisible configurations---where behavioral shifts occur without task-level degradation---are common. Yet \textsc{FrankenFormer} addresses only whether faults \emph{exist} and whether they produce measurable shifts. It does not address the operational question that practitioners ultimately face: given a new transformer's fault trace, can we automatically determine whether it is faulty, identify which architectural component is affected, and explain which root cause is most consistent with the observed evidence? Without such capability, developers are left diagnosing subtle attention-related bugs through manual inspection of training curves---a process that is both time-consuming and error-prone.
+
+To address this gap, we build on these traces to learn (i) detection, (ii) fault-family categorization, and (iii) root-cause diagnosis. For the diagnosis step, we introduce a Neural Diagnosis Graph (NDG) that organizes evidence into an interpretable path from anomalous metrics to a ranked root cause and concrete inspection recommendations.
+
+We introduce DEFault++ (Detect, Explain, and Analyze Faults in Transformers), extending the hierarchical classification framework of DEFault (Chapter~\ref{chapter_default}) from traditional DNNs to attention-based architectures. DEFault operated on FFNNs, CNNs, and RNNs using generic dynamic and static features; however, these generic signals fall short of capturing the internal dynamics of attention mechanisms. DEFault++ instead operates on transformer-specific fault traces using the attention-aware feature space from Chapter~\ref{chapter_frankenformer}. Similarly, DEFault's label space comprised seven coarse fault categories from prior DNN taxonomies; DEFault++ uses the finer-grained label space from our attention fault taxonomy (Chapter~\ref{chapter_attention}), covering 11 encoder and 12 decoder fault families with within-family root cause subcategories. Furthermore, DEFault's explainability was limited to SHAP on static features for layer faults; DEFault++ adds a three-stage diagnostic pipeline---detect, categorize, diagnose---in which explanation outputs from one stage feed into the next, producing structured diagnostic reports that connect predictions to behavioral evidence and inspection recommendations.
+
+Section~\ref{sec:defaultpp_introduction} motivates the work and states our contributions.
+Section~\ref{sec:defaultpp_approach} describes the DEFault++ methodology, covering dataset construction, feature representation, the evaluation protocol, and the three-stage diagnostic pipeline.
+Section~\ref{sec:defaultpp_experiment} presents the experimental evaluation across five research questions, followed by a discussion of threats to validity (Section~\ref{sec:defaultpp_threats}), related work (Section~\ref{sec:defaultpp_related}), and a summary of findings (Section~\ref{sec:defaultpp_summary}).
+
+\section{Introduction}
+\label{sec:defaultpp_introduction}
+
+Transformer architectures now underpin systems deployed in safety-critical domains including medical diagnosis, autonomous driving, and code generation. When a developer introduces an implementation fault into a transformer component (e.g., by misconfiguring the QKV projections or omitting the attention-score scaling factor), the resulting model often trains without crashing and produces outputs that degrade subtly rather than catastrophically. The developer is left with a model that ``works,'' yet silently underperforms, with no clear indication of what went wrong or where to look. Diagnosing such faults requires understanding which architectural component is affected and which specific misconfiguration within that component best explains the observed symptoms.
+
+Fault detection and diagnosis techniques for deep neural networks have advanced substantially for traditional architectures. Learning-based approaches such as DeepFD~\cite{deepfd} classify runtime features into fault categories, and our prior work DEFault~\cite{default} demonstrated that combining static and dynamic features in a hierarchical classifier achieves 94\% detection recall and 92\% categorization accuracy across feed-forward, convolutional, and recurrent networks, outperforming baselines by up to 11.54\%. However, these techniques were designed for architectures whose fault surfaces are well-characterized by generic features such as loss trajectories, gradient statistics, and activation counts. Unfortunately, transformer-specific components (e.g., multi-head attention projections, positional encodings, attention masking logic) introduce fault patterns that are invisible to these generic features. As a result, existing learning-based methods fall short when applied to attention-based architectures. Rule-based debuggers such as UMLAUT~\cite{umlaut} and AutoTrainer~\cite{autotrainer} suffer from the same limitation where their symptom-to-cause mappings do not cover attention-specific mechanisms, and their predefined rules cannot distinguish between structurally different faults that produce the same training-level symptoms.
+
+Given these limitations, we observed that three recent advancements could make this extension feasible. First, an empirical taxonomy of attention-specific faults identifies seven fault categories beyond those in traditional DNN taxonomies, 25 root causes, and diagnostic heuristics based on 555 real-world fault instances~\cite{attention_taxonomy}—-defining what to look for. Second, Hessian-based curvature analysis reveals that attention components exhibit strong cross-parameter interactions and fragile curvature regions, confirming that first-order diagnostic methods are insufficient and that richer behavioral signals are needed~\cite{hessian_analysis}—-establishing \emph{why} generic features may fail. Third, a taxonomy-based mutation technique (\textsc{FrankenFormer}) created 18,695 labeled fault runs with validated fault traces across seven transformer models and nine tasks~\cite{frankenformer}—-providing the data needed to learn how to diagnose.
+
+To address this gap, we introduce DEFault++ (Detect and Explain Faults), an advanced extension of DEFault~\cite{default} for detecting and diagnosing faults in Transformer-based architectures. DEFault++ is a three-stage hierarchical fault management framework tailored to encoder and decoder models. Given a transformer's fault trace, DEFault++ performs binary fault detection, categorizes the fault into one of 11--12 architecture-specific families, and diagnoses the root cause subcategory within the predicted family using learned fault patterns. Specifically, the classification works 14 feature families designed to capture attention-specific fault patterns. Each core feature within the feature family is expanded into multiple statistical (e.g., mean, max, variance) and temporal variants (e.g., early, middle, late). The framework combines three complementary explanation methods (e.g., feature attribution, counterfactual analysis, and rule-form conditions) in a cascaded architecture, using categorization outputs as structural inputs to root cause diagnosis. Unlike prior approaches where explanations are final outputs for human consumption, DEFault++ treats them as intermediate representations that the next diagnostic stage uses.
+
+We trained and evaluated DEFault++ using 18,695 model runs (encoder and decoder) and compared it with five existing fault detection and diagnosis methods. DEFault++ achieved a Macro-F1 score of 0.930 for encoder fault families and 0.836 for decoder fault families, with a Top-3 accuracy of 99.4\% and 97.0\% respectively. This outperformed all baselines. For fault categorization, DEFault++ excelled in classifying fault families that affect well-isolated components, such as residual faults, achieving near-perfect classification (F1~0.99). In contrast, broad-impact families, like variants and kernels, remained the most challenging to classify. Despite this, DEFault++ still outperformed the existing techniques in terms of both fault coverage and categorization accuracy.
+
+We thus make the following contributions:
+
+\begin{enumerate}[label=(\alph*)]
+\item We design a three-stage supervised fault management framework for transformer architectures that detects faults, categorizes them into architecture-specific fault families, and diagnoses root cause subcategories within each family.
+
+\item We introduce a transformer-specific diagnostic feature space spanning 14 feature families designed to expose attention-related fault patterns, evaluated with group-aware cross-validation and all preprocessing inside the fold.
+
+\item We propose a root cause diagnosis method based on learned fault patterns and calibrated prototype matching, producing ranked hypotheses with supporting evidence and confidence scores.
+
+\item We develop a cascaded diagnostic pipeline that combines feature attribution, counterfactual analysis, and rule-form conditions across stages, where categorization outputs feed forward into root cause diagnosis.
+
+\item We provide a replication package containing trained models, evaluation scripts, and the complete experimental dataset~\cite{defaultpp_repo}.
+\end{enumerate}
+
+%==============================================================================
+\section{Motivating Example}
+\label{sec:defaultpp_motivation}
+
+To show the diagnostic challenges that DEFault++ addresses, we present an example in Listing~\ref{lst:qkv_fusion_bug}, collected from a real-world fault reported in the HuggingFace Diffusers library (Issue~\#11903\footnote{\href{https://github.com/huggingface/diffusers/issues/11903}{HuggingFace Diffusers Issue \#11903}}).
+
+\begin{lstlisting}[style=github,language=Python,
+  caption={A faulty QKV projection fusion in a diffusion model attention module (simplified from HuggingFace Diffusers Issue \#11903).},
+  label={lst:qkv_fusion_bug}]
+class CrossAttention(nn.Module):
+    def __init__(self, dim, heads=8):
+        super().__init__()
+        self.q_proj = nn.Linear(dim, dim)
+        self.k_proj = nn.Linear(dim, dim)
+        self.v_proj = nn.Linear(dim, dim)
+        self.out_proj = nn.Linear(dim, dim)
+
+    def fuse_qkv_projections(self):
+        """Fuse Q/K/V into a single linear layer for efficiency."""
+        w = torch.cat([self.q_proj.weight,
+                       self.k_proj.weight,
+                       self.v_proj.weight])
+        self.to_qkv = nn.Linear(dim, 3 * dim)
+        self.to_qkv.weight.data.copy_(w)
+        # BUG: original q_proj, k_proj, v_proj NOT deleted
+
+    def forward(self, x, context=None):
+        q, k, v = self.to_qkv(x).chunk(3, dim=-1)  # uses fused layer
+        # ... attention computation with q, k, v ...
+        return self.out_proj(attn_output)
+
+# --- Downstream: LoRA targets the stale projections ---
+lora_config = LoraConfig(
+    target_modules=["q_proj", "v_proj"],  # dead parameters!
+)
+model = get_peft_model(pipeline.unet, lora_config)
+model.train()  # LoRA adapts stale layers; no effect on forward pass
+\end{lstlisting}
+
+A developer applies QKV projection fusion to an attention block in a diffusion model, intending to improve inference efficiency. The \texttt{fuse\_qkv\_projections} method (line~12) combines the separate \texttt{q\_proj}, \texttt{k\_proj}, and \texttt{v\_proj} layers into a single \texttt{to\_qkv} layer. However, the implementation does not delete the original separate projection layers (line~19). The \texttt{forward} method (line~21) uses the fused layer exclusively, rendering the original projections dead code. This creates three downstream failures: (1)~LoRA adapters, configured to target \texttt{q\_proj} and \texttt{v\_proj} (line~27), silently attach to the stale (unused) layers and train on dead parameters; (2)~the EMA model copies weights from the stale layers rather than the fused layer; and (3)~unfusing does not restore updated weights, silently reverting to pretrained values.
+
+Critically, this fault does not crash, does not produce NaN values, and does not trigger any warning. The model trains and generates images, but the LoRA adaptation has no effect because the adapted parameters are never used in the forward pass. The developer observes that fine-tuning ``does not seem to change the output''---a frustrating symptom that provides no indication of what went wrong. Without understanding the internal state of the attention projections, the developer has no efficient path to diagnosis.
+
+Among the existing techniques for fault detection, AutoTrainer~\cite{autotrainer} fails to detect this fault because it monitors loss curves and gradient norms at the model level, but the base model functions normally---the loss curve shows expected convergence. UMLAUT~\cite{umlaut} maps training symptoms to predefined fault rules, but none of its heuristics cover QKV projection integrity or stale parameter detection. DeepFD~\cite{deepfd} and DeepLocalize~\cite{deeplocalize} target traditional DNN fault categories (learning rate, activation function, layer configuration) and have no concept of projection-level coherence. ATTNChecker~\cite{liang2025attnchecker} detects transient numerical faults (NaN/Inf) in attention computations, not structural misconfigurations in projection layers.
+
+In contrast, DEFault++ instruments the QKV alignment features (query-key, query-value, and key-value cosine similarity), the attention entropy, and the projection update ratio across training. The fused-but-stale-split configuration produces a distinctive fault pattern: the QKV update ratio remains at its initialization baseline (indicating no parameter update on the separate projections), while attention entropy drifts and the gradient norm for the projection layer is anomalous. Stage~2 categorizes this as a \emph{projection fault}. Stage~3 diagnoses the root cause as a weight-update fault within the projection family, distinguishing it from a head-dimension mismatch or weight corruption. The structured diagnostic report links the prediction to behavioral evidence and recommends inspecting whether projection weights are being updated during training. This example demonstrates that transformer-specific behavioral features---particularly QKV alignment and projection update ratios---carry diagnostic signals that are invisible to generic training-level monitoring.
+
+%==============================================================================
+\section{Background}
+\label{sec:defaultpp_background}
+
+DEFault++ builds upon three foundations that together create the prerequisites for transformer fault management: a fault taxonomy that defines the classification target, a hierarchical classification framework whose architecture we adapt, and a labeled dataset of transformer fault traces that provides both training data and evaluation ground truth.
+
+\paragraph{Transformer fault taxonomy.}
+An empirical study of 555 real-world attention-related faults established seven fault categories beyond traditional DNN taxonomies, 25 root causes, and diagnostic heuristics that account for 33\% of attention-specific faults~\cite{attention_taxonomy}. The taxonomy groups faults by affected architectural component (e.g., QKV projections, masking logic, positional encoding, KV caching) and, within each component family, further distinguishes faults by root causes with distinct fault patterns. For example, within the QKV family, a head-dimension mismatch may produce different gradient and alignment patterns than a weight-corruption fault, even though both target the same projection component. This two-level structure (i.e., family by component and subcategory by mechanism) defines DEFault++'s hierarchical classification target and motivates diagnostic indicators sensitive to within-family distinctions (Section~\ref{sec:defaultpp_indicators}).
+
+\paragraph{DEFault.}
+DEFault~\cite{default} demonstrated that combining static code features with dynamic training features in a hierarchical classifier can detect and categorize faults in traditional DNNs with 94\% detection recall and 92\% categorization accuracy across seven fault categories on feed-forward, convolutional, and recurrent networks. Two design principles from DEFault carry forward into our work: (1)~hierarchical staging, where detection precedes categorization so that each stage operates on a progressively narrower hypothesis space, and (2)~the use of runtime behavioral features rather than source-code analysis alone, enabling the classifier to generalize beyond the specific fault instances it was trained on. However, DEFault's feature space is architecture-agnostic---it captures generic training dynamics (loss curves, gradient statistics, activation counts) without the transformer-specific signals (attention entropy shifts, projection alignment changes, cache divergence) needed to distinguish attention-related fault families. DEFault++ retains the hierarchical structure but replaces the feature representation with transformer-specific fault traces and adds a third diagnostic stage for root cause identification within each family. The taxonomy defines \emph{what} to classify; DEFault provides the \emph{how}; the remaining question is \emph{what data} to train on.
+
+\paragraph{FrankenFormer dataset.}
+\textsc{FrankenFormer}~\cite{frankenformer} is a taxonomy-based fault injection pipeline that produced 18{,}695 labeled fault runs across seven transformer models and nine tasks. Each fault configuration specifies the target component, fault type, variant, layer, and severity. Critically, each configuration is executed under paired clean and faulty fine-tuning runs with a fixed seed set, so that the behavioral effect of the injected fault can be isolated from baseline training variability. The pipeline records how internal metrics---attention distributions, projection alignments, gradient statistics, loss trajectories, and cache behavior---change under each injection. DEFault++ operates on the \emph{delta feature vectors} derived from these traces: signed differences between faulty and clean-baseline metrics, averaged across seeds. This design ensures that the classifier's input represents the fault's causal effect on model behavior rather than confounded variation from model architecture, task characteristics, or random initialization.
+
+%==============================================================================
+\section{DEFault++}
+\label{sec:defaultpp_approach}
+
+Figure~\ref{fig:defaultpp_pipeline} shows the DEFault++ pipeline. The input is a corpus of labeled fault traces, where each trace records how a transformer's internal metrics change when a specific fault is injected into one of its architectural components. DEFault++ first constructs seed-averaged delta feature vectors that capture the behavioral shift between each faulty configuration and its paired clean baseline. These feature vectors are then processed through three progressively narrower stages, each motivated by a distinct diagnostic question. Stage~1 (\emph{detection}) asks: \emph{is this configuration faulty?} It separates faulty from correct configurations using binary classification. Stage~2 (\emph{categorization}) asks: \emph{which component family is affected?} It assigns each detected fault to one of the architecture-specific fault families (11 for encoders, 12 for decoders) and generates explanation evidence that characterizes the family-level decision boundaries. Stage~3 (\emph{root cause diagnosis}) asks: \emph{what specific misconfiguration within that family best explains the symptoms?} It transforms the raw feature vector into a compact diagnostic indicator representation, matches the observed indicators against learned reference signatures, and produces a structured diagnostic report that integrates evidence from all three stages. The remainder of this section describes each component in detail.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_pipeline_overview.pdf}
+\caption{The DEFault++ three-stage pipeline. Stage~1 detects faulty configurations. Stage~2 categorizes the fault family and generates explanation evidence. Stage~3 operates within the predicted family: it transforms raw features into diagnostic indicators, matches them against learned reference signatures for each root cause subcategory, and produces a structured diagnostic report. Dashed arrows indicate information flow from Stage~2's explanation outputs into Stage~3's indicator construction and consistency checking.}
+\label{fig:defaultpp_pipeline}
+\end{figure}
+
+%------------------------------------------------------------------------------
+\subsection{Dataset Construction}
+\label{sec:defaultpp_dataset}
+
+The input dataset is the labeled fault trace corpus produced by the \textsc{FrankenFormer} mutation pipeline~\cite{frankenformer}. Each fault configuration $\mathcal{C} = (m, t, u, f, v, \ell, \sigma)$ specifies a transformer model $m$, a fine-tuning task $t$, a target component $u$, a fault type $f$, a fault variant $v$, a target layer $\ell$, and a severity $\sigma$. Each configuration is executed under paired clean and faulty fine-tuning runs across a fixed seed set $\mathcal{S}$, producing fault traces that record how internal metrics change under the injected fault. To ensure that the classifier learns the fault's causal effect rather than seed-specific training noise, we summarize each configuration as a seed-averaged \emph{delta feature vector}:
+\begin{equation}
+\Delta \bar{\mathbf{z}}(\mathcal{C}) = \frac{1}{|\mathcal{S}|}\sum_{s \in \mathcal{S}} \Bigl(\mathbf{z}^{\text{faulty}}(\mathcal{C}, s) - \mathbf{z}^{\text{clean}}(\mathcal{C}, s)\Bigr),
+\end{equation}
+where $\mathbf{z}(\mathcal{C},s)$ denotes the flattened vector of all instrumented metrics for seed $s$. Metric orientations are set so that positive values indicate worsening behavior relative to the clean baseline (e.g., accuracy decreasing, perplexity increasing, attention mass shifting toward padding).
+
+For \emph{fault categorization}, we use one delta vector per injected configuration, yielding 9{,}455 encoder fault runs and 9{,}240 decoder fault runs, totaling 18{,}695 labeled instances. For \emph{fault detection}, we additionally construct a \emph{correct} class that captures baseline seed-to-seed variability by sampling clean--clean deltas within each model--task context. This design is deliberate: it makes detection non-trivial because the detector must distinguish fault-induced behavioral shifts from baseline training variability, rather than simply flagging any fault trace as faulty.
+
+\paragraph{Baseline construction and class imbalance.}
+The detection dataset contains 9{,}560 encoder instances (9{,}455 faulty, 105 baseline) and 9{,}310 decoder instances (9{,}240 faulty, 70 baseline). The baseline class is deliberately small because it is constructed from clean--clean deltas, which represent the natural seed-to-seed variability of identical training runs under different random seeds. Each model--task pair contributes only a small number of such clean--clean pairings, because additional clean runs at the same seed set do not produce new information about training variability. Inflating the baseline class by resampling the same seed-pairs would introduce duplicate or near-duplicate feature vectors that add no discriminative information and risk overfitting. The resulting class ratio (approximately 90:1 for encoders and 132:1 for decoders) is addressed through inverse-frequency class weighting in all classifiers and by reporting AUROC alongside threshold-dependent metrics. Categorization operates on faulty instances only, where the 11--12 fault families exhibit moderate imbalance (Table~\ref{tab:perclass} reports per-family support), addressed through the same class weighting and by reporting Macro-F1, which weights all families equally regardless of support.
+
+\paragraph{Label definitions.}
+We train DEFault++ for three supervised tasks, using the same feature representation but different label sets.
+
+For \emph{fault detection} (Stage~1), the label is binary. An instance is \textit{faulty} if it is a faulty--clean delta vector produced by an injected configuration, and \textit{correct} if it is a clean--clean delta vector constructed by pairing two clean runs from the same model--task context under different seeds. We subsample clean--clean pairs to approximately balance the classes within each fold.
+
+For \emph{fault categorization} (Stage~2), the label is the injected \emph{fault family}. Each fault family groups implementation-level faults that target the same architectural component or mechanism. The label spaces are architecture-specific, grounded in the attention-specific fault taxonomy~\cite{attention_taxonomy}. The encoder label space contains 11 classes: Score, Positional, FFN, QKV, LayerNorm, Residual, Masking, Embedding, Kernel, Output, and Variant. The decoder label space contains 12 classes, adding KV\_Cache (faults in the key-value caching mechanism used during autoregressive generation).
+
+For \emph{root cause diagnosis} (Stage~3), the label is the injected \emph{root cause subcategory} within each fault family. Each family contains 2--5 subcategories that distinguish mechanistically different faults targeting the same component. Stage~3 operates conditionally: given a predicted (or ground-truth) family from Stage~2, the label space reduces to the subcategories within that family only.
+
+\paragraph{Class distribution.}
+The label distribution is imbalanced at both levels. Some fault families (e.g., Score, QKV) have more configurations than others (e.g., KV\_Cache, Variant) due to the combinatorial structure of variant enumeration in the \textsc{FrankenFormer} design. We address imbalance through class weighting and report per-fold class distributions alongside results. Table~\ref{tab:dataset} summarizes the dataset and Figure~\ref{fig:defaultpp_dataset_distribution} shows the per-family distribution for both architectures.
+
+\begin{table}[!ht]
+\centering
+\caption{Dataset overview. Detection includes baseline (correct) and faulty (buggy) runs. Categorization uses faulty runs only.}
+\label{tab:dataset}
+\small
+\begin{tabular}{l rr rr}
+\toprule
+& \multicolumn{2}{c}{\textsc{Encoder}} & \multicolumn{2}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+& Detection & Categ. & Detection & Categ. \\
+\midrule
+Total runs & 9,560 & 9,455 & 9,310 & 9,240 \\
+Features & 544 & 544 & 216 & 216 \\
+Baselines & 105 & -- & 70 & -- \\
+Fault families & -- & 11 & -- & 12 \\
+CV folds & 5 & 5 & 5 & 5 \\
+Grouping & \multicolumn{4}{c}{(model, dataset, seed) -- GroupKFold} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_dataset_distribution_radar_composite.pdf}
+\caption{Per-family distribution of fault configurations for encoder (left) and decoder (right) architectures. Radar plots show the relative proportion of each fault family in the categorization dataset. The asymmetric distribution motivates the use of class weighting and Macro-F1 evaluation.}
+\label{fig:defaultpp_dataset_distribution}
+\end{figure}
+
+%------------------------------------------------------------------------------
+\subsection{Feature Representation}
+\label{sec:defaultpp_features}
+
+A key design decision in DEFault++ is its transformer-specific feature space. Prior approaches to DNN fault diagnosis (including DEFault~\cite{default}) collect generic runtime features such as loss trajectories, gradient statistics, and activation counts. However, as the ablation analysis in RQ$_3$ will confirm, these generic signals fail to capture the internal dynamics of attention mechanisms. DEFault++ instead targets specific transformer components: attention distributions, projection alignments, residual-stream integrity, positional encoding quality, and cache behavior. These features are necessary because attention faults produce fault patterns that are invisible to generic DNN features.
+
+The feature representation is organized at two levels. The \emph{core feature} level defines 115 distinct diagnostic signals for encoders and 56 for decoders, organized into 14 feature families (10 available for decoders). Each core feature captures a semantically meaningful aspect of transformer behavior, such as attention entropy at a specific layer, the cosine similarity between query and key projections, or the gradient noise scale. To capture temporal dynamics and statistical variation across training, each core feature is expanded into multiple columns representing different training phases (early, mid, and final epoch) and summary statistics (mean, variance, minimum, maximum, slope). This expansion produces 544 input columns for encoders and 216 for decoders. Explanation and diagnostic reasoning operate at the core feature level, which preserves interpretability; the expanded columns provide the classifier with the temporal and statistical resolution needed for fine-grained discrimination.
+
+We organize these features into 14 families (10 available for decoders), each targeting a specific transformer subsystem. Table~\ref{tab:defaultpp_features} summarizes each family, its availability by architecture, and its diagnostic purpose.
+
+\begin{table}[!ht]
+\caption{Feature families in DEFault++. Enc./Dec.\ indicate availability per architecture. Diagnostic purpose describes which fault families each feature group is designed to expose.}
+\label{tab:defaultpp_features}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{0.92}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{} p{2.8cm} p{3.8cm} c c p{5.5cm} @{}}
+\toprule
+\textbf{Feature Family} & \textbf{Core Signals} & \textbf{Enc.} & \textbf{Dec.} & \textbf{Diagnostic Purpose} \\
+\midrule
+Attention statistics & Entropy, padding mass, head utilization (per layer) & \cmark & \cmark & Quantifies attention distribution quality; flags collapse, fixation, and dilution \\
+QKV alignment & Q--K, Q--V, K--V cosine similarity & \cmark & \xmark & Measures projection coherence; detects corrupted weight interactions \\
+Score statistics & Mean, variance, max of raw attention logits & \cmark & \cmark & Reflects attention computation stability; sensitive to Score and Positional faults \\
+Positional discrim. & Position distinguishability in representations & \cmark & \cmark & Measures whether positions remain separable; targets Positional faults \\
+FFN output magnitude & L2 norm of FFN sublayer outputs (per layer) & \cmark & \cmark & Captures feed-forward health independently of attention signals \\
+LayerNorm statistics & $\gamma$ norms, post-norm mean/variance & \cmark & \xmark & Reveals normalization disruptions; primary signal for LayerNorm faults \\
+Residual stream sim. & Cosine similarity pre/post residual connection & \cmark & \xmark & Tracks skip-connection integrity; diagnostic for Residual faults \\
+Representation drift & CKA-based layer-wise representation change & \cmark & \xmark & Captures long-range fault propagation across layers \\
+Embedding statistics & Input embedding norm, token-level variance & \cmark & \xmark & Detects corruption at the model entry point; targets Embedding faults \\
+Training dynamics & Loss trajectory, gradient norm-to-noise, step time & \cmark & \cmark & Monitors optimization health; sensitive to training-destabilizing faults \\
+Task metrics & Accuracy/perplexity, calibration error & \cmark & \cmark & Measures end-task impact; separates impact-visible from impact-invisible faults \\
+Kernel timing & GPU kernel execution time, peak memory & \cmark & \cmark & Detects computational anomalies; primary signal for Kernel faults \\
+Cache diagnostics & cache\_hidden\_sim., cache\_nll\_divergence & \xmark & \cmark & Targets KV-cache faults unique to autoregressive decoders \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+The feature families fall into four functional groups. \emph{Attention-level features} (attention statistics, QKV alignment, score statistics, positional discrimination) capture the internal dynamics of the multi-head attention mechanism. Attention statistics---entropy, padding mass, and head utilization measured per layer---quantify whether the attention mechanism distributes probability mass effectively or exhibits pathological patterns such as collapse onto a single position, uniform dilution, or excessive mass on padding tokens. QKV alignment measures pairwise cosine similarity among projection outputs; faults that corrupt a single projection disrupt alignment patterns in ways that are largely orthogonal to downstream score perturbations. The overlap in sensitivity among these families is a primary source of classification difficulty, particularly between the QKV, Score, and Positional fault families, which share partially overlapping feature distributions despite affecting different components.
+
+\emph{Component-level features} (FFN output magnitude, LayerNorm statistics, residual stream similarity, embedding statistics) each target a specific transformer sublayer. Residual-stream cosine similarity quantifies skip-connection integrity and produces one of the most distinctive fault patterns in the feature space. These component-level families are available only for encoders due to differences in hook accessibility in the decoder instrumentation~\cite{frankenformer}.
+
+\emph{Propagation and cache features} include representation drift, measured via centered kernel alignment (CKA), which captures how far a fault's effect propagates through the network, and decoder-specific cache diagnostics that target KV\_Cache faults.
+
+\emph{Training and system features} (loss trajectory, gradient statistics, task metrics, kernel timing) are architecture-agnostic features that capture optimization stability and computational anomalies.
+
+\paragraph{Design rationale.}
+The feature design is motivated by a key property of attention mechanisms: their components exhibit strong cross-parameter interactions, where local perturbations in one projection can propagate non-locally across heads, projections, and residual streams~\cite{hessian_analysis}. Accordingly, the feature space emphasizes cross-component signals and representation-level divergence rather than relying solely on end-task metrics. When a core feature expands into multiple per-layer or per-epoch columns, we retain the expanded representation for classification but aggregate explanation mass back to the core feature during diagnostic reasoning (Section~\ref{sec:defaultpp_reasoning}), so that feature rankings remain interpretable.
+
+%------------------------------------------------------------------------------
+\subsection{Evaluation Protocol}
+\label{sec:defaultpp_cv}
+
+We use group-aware $k$-fold cross-validation ($k=5$) to prevent information leakage---a critical design choice, since configurations from the same model--task pair share correlated features because their clean baselines and training dynamics are coupled. Grouping by (model, dataset, seed) ensures that no fold's test set contains configurations whose clean baseline was observed during training. Without this grouping, the classifier could exploit recipe-level scale differences rather than learning genuinely fault-discriminative patterns, inflating reported accuracy. We use stratified group folds to maintain approximate class proportions and generate a single fold assignment reused identically across all models, so that all comparisons are paired.
+
+All preprocessing is performed inside the fold: scaling, calibration, threshold selection, feature binning, and indicator normalization are fitted on the train split only. Hyperparameters are selected from a small fixed grid on training data; no selection was made using held-out test folds. Details of the classifier families, hyperparameter grids, and pipeline configurations are provided in the replication package~\cite{defaultpp_repo}.
+
+We evaluate four classifiers with distinct inductive biases: elastic-net logistic regression (linear baseline), calibrated RBF SVM (kernel-based), XGBoost (gradient-boosted ensemble), and EasyEnsembleClassifier (imbalance-specialized ensemble). All four use the same folds, label definitions, and class-weighting conventions, so that performance differences reflect model behavior rather than setup differences.
+
+\paragraph{Metrics.}
+For detection, we report AUROC. For categorization, we report Macro-F1 (primary), balanced accuracy, Top-3 accuracy, and AUROC. For root cause diagnosis, we evaluate under oracle gating (ground-truth family) and predicted gating (Stage~2 output), reporting per-family Macro-F1 and balanced accuracy.
+
+%------------------------------------------------------------------------------
+\subsection{Diagnostic Pipeline}
+\label{sec:defaultpp_reasoning}
+
+A raw class prediction---however accurate---is insufficient for practitioners who need to understand \emph{why} the diagnosis was reached and \emph{what} to inspect. Existing fault diagnosis approaches treat explanations as final outputs for human consumption. In contrast, DEFault++'s diagnostic pipeline organizes three explanation methods and a root cause diagnosis stage into a structured reasoning chain: categorize $\rightarrow$ explain $\rightarrow$ diagnose $\rightarrow$ report. Crucially, Stage~2's explanation outputs serve as structural inputs to Stage~3, not as standalone analyses. This cascaded design ensures that each subsequent stage builds on the evidence produced by its predecessor. All explanation computations use held-out test folds or out-of-fold predictions.
+
+\subsubsection{Stage~2: Evidence Generation}
+\label{sec:defaultpp_evidence}
+
+The categorization model produces family-level predictions and probability estimates. Three explanation methods generate complementary evidence.
+
+\paragraph{Feature attribution (SHAP).}
+SHAP~\cite{lundberg2017unified} identifies which features drove each family prediction. We average absolute Shapley values across held-out instances to rank features globally and use per-instance force plots for local explanations. Where core features expand into multiple columns, we aggregate SHAP mass to the core feature level before ranking. Stability across folds is assessed via Kendall's $\tau$ on the top-$k$ feature lists. \textit{Forward use in Stage~3:} the per-family SHAP rankings select the active subset of diagnostic indicators for within-family diagnosis (Section~\ref{sec:defaultpp_indicators}).
+
+\paragraph{Counterfactual analysis (DiCE).}
+DiCE~\cite{mothilal2020dice} identifies the minimal feature changes that would flip a family prediction. For each misclassified or low-margin instance, we generate 3--5 diverse counterfactual changes under plausibility constraints. \textit{Forward use in Stage~3:} counterfactual distances define the inter-family contrast in the diagnostic report.
+
+\paragraph{Rule-form conditions (Anchors).}
+Anchors~\cite{ribeiro2018anchors} produce high-precision if-then conditions sufficient for a family prediction, with features discretized using quantile bin edges learned on the training fold only. \textit{Forward use in Stage~3:} family-level rules enable consistency checking between Stage~2 and Stage~3 diagnoses.
+
+Together, these three evidence sources (e.g., feature attributions, counterfactual changes, and rule conditions) provide the structural inputs for root cause diagnosis. The following section describes how Stage~3 consumes this evidence to identify specific subcategories within the predicted fault family.
+
+\subsubsection{Stage~3: Root Cause Diagnosis}
+\label{sec:defaultpp_rootcause}
+
+Stage~2 determines \emph{which component family} is faulty. However, knowing that a fault lies in the QKV projections does not tell the developer whether the issue is a head-dimension mismatch, a weight corruption, or a frozen update. Stage~3 therefore asks the follow-up question: \emph{what is the most likely root cause within that family?} This task is inherently harder than family-level categorization because within-family subcategories share the same feature footprint and differ only in mechanism-level details, and the per-subcategory sample counts are smaller. Stage~3 addresses this through two components: (1)~a within-family prototype matching procedure that identifies the root cause subcategory from compact diagnostic indicators, and (2)~a \emph{Neural Diagnosis Graph} (NDG) that organizes the evidence from all three stages into an interpretable diagnostic path.
+
+\paragraph{Neural Diagnosis Graph.}
+The NDG is a typed, evidence-weighted knowledge graph that serves as the \emph{reasoning structure} for diagnostic reasoning. It does not perform classification itself; rather, it binds together the outputs from Stages~1--3 and the mutation-derived differential signatures into a traversable structure that produces practitioner-facing diagnostic reports.
+
+The NDG contains five node types---\textsc{XAIReport}, \textsc{CoreFeature}, \textsc{Subsystem}, \textsc{FaultFamily}, and \textsc{FaultSubcategory}---and seven directed edge types that encode the relationships between them (Figure~\ref{fig:defaultpp_ndg_schema}). Three edge types encode empirical knowledge derived from the mutation analysis: \textsc{Signature} edges (220 encoder, 240 decoder) record which core features deviate, in which direction, and by how much for each fault family; \textsc{Impacts} edges link fault families to affected subsystems with mutation-grounded intensity weights; and \textsc{Confusable\_With} edges (22 per architecture) encode known confusion channels identified from the Stage~2 confusion matrices. Three edge types bind Stage~2's explanation outputs: \textsc{Highlights} (SHAP importance), \textsc{Changes} (counterfactual changes), and \textsc{Encodes\_Rule} (stable Anchor rules). The remaining \textsc{Belongs\_To} edges connect core features to their canonical subsystems via the feature-to-subsystem mapping.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_ndg_schema.pdf}
+\caption{Neural Diagnosis Graph (NDG) schema. Nodes represent evidence (feature anomalies and XAI artifacts), core indicators, subsystems, fault families, and root-cause subcategories. Directed edges encode evidence aggregation, mutation-grounded propagation patterns, and explicit confusability links. The NDG organizes diagnostic evidence; classification is performed by the prototype matching procedure described below.}
+\label{fig:defaultpp_ndg_schema}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_ndg_inference.pdf}
+\caption{Diagnostic report assembly via NDG traversal. Stage~2 provides a family-level prediction. Prototype matching (below) provides a root cause subcategory. The NDG traversal collects supporting evidence---anomalous indicators, implicated subsystems, confusable alternatives---into a structured diagnostic report.}
+\label{fig:defaultpp_ndg_inference}
+\end{figure}
+
+\clearpage
+Table~\ref{tab:ndg} summarizes the graph structure for both architectures.
+
+\begin{table}[!ht]
+\centering
+\caption{Neural Diagnosis Graph (NDG) statistics.}
+\label{tab:ndg}
+\small
+\begin{tabular}{l rr}
+\toprule
+Component & Encoder & Decoder \\
+\midrule
+\multicolumn{3}{l}{\textit{Nodes}} \\
+\quad CoreFeature & 117 & 105 \\
+\quad FaultFamily & 11 & 12 \\
+\quad Subsystem & 11 & 9 \\
+\quad XAIReport & 1 & 1 \\
+\quad \textbf{Total} & 140 & 127 \\
+\midrule
+\multicolumn{3}{l}{\textit{Edges}} \\
+\quad BELONGS\_TO & 45 & 45 \\
+\quad CHANGES & 15 & 15 \\
+\quad CONFUSABLE\_WITH & 22 & 22 \\
+\quad ENCODES\_RULE & 4 & 7 \\
+\quad HIGHLIGHTS & 30 & 30 \\
+\quad IMPACTS & 121 & 108 \\
+\quad SIGNATURE & 220 & 240 \\
+\quad \textbf{Total} & 457 & 467 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Crucially, the NDG is not evaluated as a classifier: it does not produce predictions that could be scored against ground truth. Its role is to make the diagnostic reasoning \emph{interpretable} by connecting the predicted family and root cause to the specific diagnostic indicators, subsystems, and mutation-derived signatures that support the diagnosis (Figure~\ref{fig:defaultpp_ndg_inference}). The classification itself is performed by the prototype matching procedure described next.
+
+\paragraph{Diagnostic indicator representation.}
+\label{sec:defaultpp_indicators}
+
+The raw delta feature vector $\Delta\bar{\mathbf{z}} \in \mathbb{R}^d$ contains hundreds of columns, many of which are per-layer or per-epoch expansions of the same core signal. Within-family diagnosis over 2--5 subcategories with limited samples requires a more compact, interpretable representation. We construct \emph{diagnostic indicators}: named dimensions that correspond to transformer debugging concepts rather than individual feature columns.
+
+The construction proceeds in three steps. First, each feature column is parsed into a structured schema $\langle\textit{metric}, \textit{module}, \textit{phase}, \textit{statistic}\rangle$ using the naming conventions of the feature families (Table~\ref{tab:defaultpp_features}). Second, raw feature values are converted to baseline-relative anomaly scores by computing robust $z$-scores within each model--task group, using the median and median absolute deviation of the baseline (non-faulty) runs as reference. Third, features sharing the same $\langle\textit{metric}, \textit{module}\rangle$ prefix are pooled into a single indicator dimension using the maximum absolute value across phases and statistics. The result is a diagnostic indicator vector $\tilde{\mathbf{z}} \in \mathbb{R}^{d'}$ with $d' \approx 30$--50 dimensions, each carrying a human-readable name (e.g., ``attention entropy anomaly,'' ``QKV update intensity,'' ``residual stream disruption'').
+
+Not all indicators are equally relevant for every family. The per-family SHAP rankings from Stage~2 determine which indicators are \emph{active} for each family's within-family diagnosis. Indicators whose constituent raw features carry negligible aggregated SHAP mass for family $c$ are masked out when diagnosing subcategories within $c$.
+
+\paragraph{Fault prototypes.}
+\label{sec:defaultpp_signatures}
+
+A fault prototype encodes the expected feature pattern for a specific root cause subcategory: which indicators deviate, in which direction, and by how much.
+
+The estimation procedure depends on within-family sample size. For families with sufficient data ($n \geq 20$), we estimate each subcategory's signature using a linear mixed-effects model fitted per indicator:
+\begin{equation}
+\tilde{z}_{ij} = \mu + \beta_{s(i),j} + u_{\text{recipe}(i)} + \varepsilon_i,
+\label{eq:mixed_effects}
+\end{equation}
+where $\beta_{s,j}$ is the fixed effect of subcategory $s$ on indicator $j$, and $u_{\text{recipe}}$ is a random intercept for the model--task group, absorbing recipe-level scale differences. We retain only indicators whose estimated effect is sign-consistent across cross-validation folds.
+
+For families with limited data ($n < 20$), we compute the empirical signature as the mean indicator vector per subcategory minus the family mean, without random effects. For families with fewer than four instances per subcategory, we retain individual exemplar vectors. These profiles are flagged in the reference table as empirical estimates without uncertainty quantification.
+
+\paragraph{Prototype matching and calibration.}
+\label{sec:defaultpp_matching}
+
+Given a new instance with indicator vector $\tilde{\mathbf{z}}$ and predicted family $\hat{c}$ from Stage~2, diagnosis proceeds by comparing $\tilde{\mathbf{z}}$ against the reference signatures $\{\boldsymbol{\beta}_s\}$ for the subcategories within $\hat{c}$:
+\begin{equation}
+\text{score}(s) = \sum_{j \in A_s} w_{s,j} \cdot \text{sign}(\beta_{s,j}) \cdot \tilde{z}_j,
+\label{eq:matching}
+\end{equation}
+where $A_s$ is the set of indicators retained by stability selection for subcategory $s$, and $w_{s,j}$ is a reliability weight equal to the inverse variance of $\beta_{s,j}$ across folds (for mixed-effects estimates) or uniform (for empirical estimates). Match scores are converted to calibrated probabilities using isotonic regression fitted on out-of-fold predictions within each family separately.
+
+\subsubsection{Structured Diagnostic Reports}
+\label{sec:defaultpp_reports}
+
+For each classified instance, the diagnostic pipeline synthesizes outputs from all three stages into a structured report (Figure~\ref{fig:defaultpp_neural_stack_trace}) with five components:
+
+\begin{enumerate}[nosep]
+\item \textbf{Detection verdict:} binary prediction (correct/faulty) with calibrated confidence from Stage~1.
+
+\item \textbf{Family prediction:} the top-$k$ predicted fault families with probability estimates from Stage~2.
+
+\item \textbf{Root cause diagnosis:} the top-ranked subcategories within the predicted family from Stage~3, with calibrated probabilities.
+
+\item \textbf{Evidence summary:} integrating three sources.
+\begin{itemize}[nosep]
+    \item \emph{Supporting indicators:} diagnostic indicators where the observed anomaly aligns with the predicted subcategory's reference signature (direction and magnitude both consistent).
+    \item \emph{Inter-family contrast:} from Stage~2's counterfactual analysis, the minimal feature changes that would move the instance into a neighboring family.
+    \item \emph{Intra-family contrast:} indicators where the predicted subcategory and the runner-up subcategory predict different directions.
+\end{itemize}
+
+\item \textbf{Confidence score:} posterior margin (probability gap between top-ranked and second-ranked subcategories) and signature distance (Mahalanobis distance from the predicted subcategory's training centroid).
+\end{enumerate}
+
+A consistency check compares the Stage~2 rule conditions against the Stage~3 diagnosis. If a Stage~2 rule predicts that a particular indicator should be elevated, but the diagnosed subcategory would produce the opposite direction, the report flags the inconsistency.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_neural_stack_trace.pdf}
+\caption{Output of Stage~3. The Neural Diagnosis Graph (NDG) is traversed to produce a structured diagnostic report: a ranked fault hypothesis, affected subsystems, localized evidence (core features and variants), and inspection recommendations.}
+\label{fig:defaultpp_neural_stack_trace}
+\end{figure}
+
+%==============================================================================
+\section{Experiment}
+\label{sec:defaultpp_experiment}
+
+We evaluate DEFault++ on the \textsc{FrankenFormer} fault trace corpus (18{,}695 fault runs) and compare it against five existing approaches. We train and evaluate classifiers separately for encoder (9{,}455 fault runs, 115 core features expanded to 544 input columns) and decoder (9{,}240 fault runs, 56 core features expanded to 216 input columns) architectures, because their feature spaces differ and their label spaces are not identical. To this end, we answer six research questions:
+
+\smallskip\noindent
+\textbf{RQ$\mathbf{_1}$:} How effectively can DEFault++ detect faulty transformer configurations from fault traces?\\
+\textbf{RQ$\mathbf{_2}$:} How effectively can DEFault++ categorize fault families in transformer configurations?\\
+\textbf{RQ$\mathbf{_3}$:} Which features are most predictive for fault categorization, and how does removing individual feature families affect diagnostic performance?\\
+\textbf{RQ$\mathbf{_4}$:} What do the diagnostic explanations reveal about the structure of the fault classification space, and how stable are they across folds?\\
+\textbf{RQ$\mathbf{_5}$:} How effectively can DEFault++'s signature-matching approach diagnose root cause subcategories within fault families?\\
+\textbf{RQ$\mathbf{_6}$:} How does DEFault++ compare against existing fault detection and diagnosis approaches when applied to transformer-specific faults?
+
+\bigskip
+
+%------------------------------------------------------------------------------
+\subsection{Experimental Setup}
+\label{sec:defaultpp_setup}
+
+\paragraph{Dataset.}
+The experimental dataset is the complete \textsc{FrankenFormer} output~\cite{frankenformer}, comprising seed-averaged delta feature vectors ($\Delta\bar{z}$) that capture the behavioral shift between each faulty configuration and its paired clean baseline. Table~\ref{tab:dataset} summarizes the dataset by architecture and task (detection versus categorization). The encoder and decoder corpora are evaluated separately because their feature spaces differ in dimensionality and composition (Section~\ref{sec:defaultpp_features}) and their label spaces are not identical.
+
+\paragraph{Grouping.}
+Cross-validation groups are defined at the (model, dataset, seed) level. This grouping is essential: configurations sharing a model--task pair have correlated features because their clean baselines and training dynamics are coupled. Without this grouping, the classifier could exploit recipe-level scale differences rather than learning fault-discriminative patterns. We use five stratified group folds with a single fixed assignment shared across all classifier families, so that all performance comparisons are paired on the same held-out instances and differences reflect model behavior rather than fold randomness.
+
+\paragraph{Implementation.}
+Classification models are implemented in scikit-learn~\cite{pedregosa2011scikit} and XGBoost~\cite{chen2016xgboost}; class imbalance is addressed through inverse-frequency weighting via imbalanced-learn~\cite{lemaitre2017imbalanced}. Explanation methods use SHAP~\cite{lundberg2017unified} for feature attribution, DiCE~\cite{mothilal2020dice} for counterfactual generation, and Anchors~\cite{ribeiro2018anchors} for rule extraction. Stage~3 signature estimation uses linear mixed-effects models from \texttt{statsmodels}~\cite{statsmodels}. Random seeds are fixed at all stochastic points for reproducibility. Hyperparameter tuning uses a predefined grid evaluated only on training data; no selection decisions were informed by held-out fold performance. The complete pipeline, hyperparameter configurations, and trained models are available in the replication package~\cite{defaultpp_repo}.
+
+\paragraph{Baseline methods.}
+To place our work in the literature, we compare DEFault++ against five existing fault detection and diagnosis approaches, selected to span the three methodological paradigms: rule-based monitoring, learning-based diagnosis on generic DNN features, and graph-based fault reasoning. Importantly, no existing approach was designed for transformer-specific faults, so each comparison requires adaptation to the \textsc{FrankenFormer} evaluation setting. Table~\ref{tab:baseline_coverage} summarizes which pipeline stages each baseline can address and which require adaptation.
+
+\begin{enumerate}[label=(\roman*),nosep]
+
+\item \textbf{DEFault}~\cite{default} is our direct predecessor (Chapter~\ref{chapter_default}), a hierarchical classification framework that combines static and dynamic features to detect and categorize faults in traditional DNNs (FFNNs, CNNs, RNNs). DEFault classifies into seven coarse fault categories derived from the Humbatova taxonomy~\cite{humbatova2020taxonomy} and reported 94\% detection recall and 92\% categorization accuracy under random train/test splitting. \emph{Adaptation:} We extract DEFault's generic dynamic feature set (loss trajectory statistics, gradient norm statistics, activation distribution summaries) from the \textsc{FrankenFormer} training logs and apply its hierarchical classifier pipeline. Because DEFault's seven-category label space does not align with our 11--12 fault families, we evaluate two conditions: (a)~DEFault's original label mapping (merging our families into its seven categories) and (b)~DEFault's feature set retrained on our label space. The comparison isolates the contribution of transformer-specific features from the contribution of the hierarchical classification architecture. \emph{Coverage:} Detection and categorization. DEFault has no root cause diagnosis stage and no explanation pipeline.
+
+\item \textbf{DeepFD}~\cite{deepfd} is a learning-based fault diagnosis and localization framework that monitors runtime features during DNN training and classifies faults into five categories (incorrect loss function, wrong optimizer, inappropriate learning rate, missing activation, wrong activation function). DeepFD uses a graph neural network (GNN) over a program dependence graph enriched with runtime statistics. It reported 52\% fault diagnosis accuracy and 42\% fault localization accuracy on its benchmark of real-world buggy DL programs. \emph{Adaptation:} We extract DeepFD's runtime feature set (per-epoch loss, gradient norms, weight statistics, activation distributions) from the \textsc{FrankenFormer} logs. Because DeepFD's fault categories are defined at a coarser granularity than our families (e.g., ``wrong activation'' versus our distinction between Score, Masking, and Positional faults within the attention mechanism), we evaluate under its original five-category mapping and under our fine-grained label space with its features retrained. DeepFD's GNN component requires a program dependence graph that is not available for our injected configurations, so we use its feature extraction with a standard classifier head. \emph{Coverage:} Detection and categorization only. DeepFD provides fault localization (pointing to suspicious code regions) but not root cause subcategory diagnosis or structured explanations.
+
+\item \textbf{AutoTrainer}~\cite{autotrainer} is a rule-based runtime monitoring system that detects five training problems (vanishing gradient, exploding gradient, dying ReLU, oscillating loss, slow convergence) during training and applies predefined repairs. It reported 100\% detection rate with no false positives on its evaluation of 495 models. \emph{Adaptation:} We apply AutoTrainer's five detection rules to the per-epoch training logs from \textsc{FrankenFormer}. Because AutoTrainer's labels are symptom-level (describing training dynamics) rather than component-level (describing which architectural element is faulty), we report both its raw detection rate (does it flag the configuration as problematic?) and a best-effort mapping from its symptom labels to our fault families. This comparison quantifies the gap between symptom-level monitoring and component-level diagnosis. \emph{Coverage:} Detection only. AutoTrainer does not perform fault categorization by component; its ``diagnosis'' is a symptom label. It has no root cause or explanation stages.
+
+\item \textbf{DeepDiagnosis}~\cite{deepdiagnosis} extends the rule-based paradigm by monitoring eight error conditions during training (the five from AutoTrainer plus unchanged weights, numerical errors, and unstable accuracy) and mapping detected symptoms to root cause hypotheses via a predefined decision tree. It reported superior accuracy compared to UMLAUT and DeepLocalize on 444 models. \emph{Adaptation:} We implement DeepDiagnosis's eight monitoring rules on the \textsc{FrankenFormer} training traces and apply its symptom-to-cause mapping. Like AutoTrainer, its labels are symptom-level, but the expanded rule set and explicit cause mapping provide a richer baseline for comparison. \emph{Coverage:} Detection and partial categorization (symptom-to-cause mapping provides a coarse fault type, but not a component-level family). No root cause subcategory diagnosis or explanation pipeline.
+
+\item \textbf{FL4Deep}~\cite{fl4deep} is a system-level fault localization technique that constructs a Knowledge Graph (KG) from static and dynamic information extracted from DL software systems. It uses Random Forest, Decision Tree, and KNN classifiers on dynamic features (accuracy, loss, validation metrics processed through eight statistical operators) with majority voting, then applies KG-based reasoning to infer fault locations. It was evaluated on 100 faulty DL scripts covering six fault types. \emph{Adaptation:} We extract FL4Deep's dynamic feature set from \textsc{FrankenFormer} training logs and construct its KG using the static configuration metadata available for each fault injection (model architecture, hyperparameters, layer configurations). We compare FL4Deep's KG-based reasoning against DEFault++'s Neural Diagnosis Graph, evaluating both the classification accuracy of the dynamic feature classifiers and the quality of the graph-based diagnostic reasoning. \emph{Coverage:} Detection and partial categorization (six generic fault types). FL4Deep's KG provides structured diagnostic output, enabling a direct comparison with our NDG at the reasoning level, though its fault taxonomy does not cover transformer-specific components.
+\end{enumerate}
+
+Together, these five baselines cover the full spectrum from rule-based detection to graph-based reasoning; however, none provides transformer-specific features, component-level diagnosis, or explanation-driven root cause identification.
+
+\begin{table}[!ht]
+\caption{Baseline coverage across DEFault++ pipeline stages. \cmark\ = natively supported. $\circ$ = requires adaptation (label remapping or feature retraining). \xmark\ = not supported. Stage~1 = detection, Stage~2 = categorization, Stage~3 = root cause diagnosis, XAI = explanation pipeline, Graph = structured diagnostic reasoning.}
+\label{tab:baseline_coverage}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{} l c c c c c l @{}}
+\toprule
+\textbf{Method} & \textbf{Stage~1} & \textbf{Stage~2} & \textbf{Stage~3} & \textbf{XAI} & \textbf{Graph} & \textbf{Paradigm} \\
+\midrule
+DEFault~\cite{default}          & \cmark & $\circ$ & \xmark & \xmark & \xmark & Learning (generic) \\
+DeepFD~\cite{deepfd}            & \cmark & $\circ$ & \xmark & \xmark & \xmark & Learning (generic) \\
+AutoTrainer~\cite{autotrainer}  & \cmark & \xmark & \xmark & \xmark & \xmark & Rule-based \\
+DeepDiagnosis~\cite{deepdiagnosis} & \cmark & $\circ$ & \xmark & \xmark & \xmark & Rule-based \\
+FL4Deep~\cite{fl4deep}          & \cmark & $\circ$ & \xmark & \xmark & \cmark & Graph + learning \\
+\midrule
+\textbf{DEFault++}              & \cmark & \cmark & \cmark & \cmark & \cmark & Learning (transformer) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%------------------------------------------------------------------------------
+\subsection{Results}
+
+\subsubsection{\textbf{Answering RQ$\mathbf{_1}$} -- Fault Detection}
+\label{sec:defaultpp_rq1}
+
+Table~\ref{tab:detection} reports detection performance averaged across five folds.
+
+\begin{table}[!ht]
+\centering
+\caption{Stage~1: Fault detection performance (5-fold GroupKFold CV). Best results in \textbf{bold}.}
+\label{tab:detection}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l cc}
+\toprule
+& \textsc{Encoder} ($n\!=\!9{,}560$) & \textsc{Decoder} ($n\!=\!9{,}310$) \\
+\cmidrule(lr){2-2}\cmidrule(lr){3-3}
+Classifier & AUROC & AUROC \\
+\midrule
+Elastic Net LR & 0.892$\pm$0.036 & 0.813$\pm$0.049 \\
+RBF SVM & 0.504$\pm$0.020 & 0.529$\pm$0.138 \\
+XGBoost & \textbf{0.976$\pm$0.015} & 0.894$\pm$0.039 \\
+EasyEnsemble & 0.966$\pm$0.012 & \textbf{0.936$\pm$0.016} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+XGBoost achieves the highest detection AUROC on encoders (0.976 $\pm$ 0.015). On decoders, EasyEnsemble achieves the highest AUROC (0.936 $\pm$ 0.016), slightly exceeding XGBoost (0.894 $\pm$ 0.039). These results indicate that transformer fault traces carry a strong detection signal, even in the presence of extreme class imbalance. Elastic Net provides a competitive linear baseline (encoder AUROC 0.892, decoder AUROC 0.813), suggesting that a substantial portion of the detection signal is linearly separable, while RBF SVM performs substantially lower on both architectures (encoder 0.504, decoder 0.529), consistent with known bandwidth sensitivity in high-dimensional feature spaces.
+
+The primary diagnostic challenge lies not in detection but in categorization and root cause diagnosis, where the classifier must distinguish fault families with overlapping feature distributions.
+
+\begin{tcolorbox}[colback=gray!3, colframe=gray!50, boxrule=0.3pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Finding (RQ$_1$):} DEFault++ achieves AUROC of 0.976 (encoder, XGBoost) and 0.936 (decoder, EasyEnsemble) for fault detection. Detection is highly reliable, and the primary diagnostic challenge lies in categorization and root cause diagnosis.
+\end{tcolorbox}
+
+%------
+\subsubsection{\textbf{Answering RQ$\mathbf{_2}$} -- Fault Categorization}
+\label{sec:defaultpp_rq2}
+
+Table~\ref{tab:categorization} reports categorization metrics across five folds.
+
+\begin{table}[!ht]
+\centering
+\caption{Stage~2: Fault family categorization performance (5-fold GroupKFold CV). Best results in \textbf{bold}.}
+\label{tab:categorization}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l cccc cccc}
+\toprule
+& \multicolumn{4}{c}{\textsc{Encoder} (11 classes, $n\!=\!9{,}455$)} & \multicolumn{4}{c}{\textsc{Decoder} (12 classes, $n\!=\!9{,}240$)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+Classifier & M-F1 & Bal.\ Acc & Top-3 & AUROC & M-F1 & Bal.\ Acc & Top-3 & AUROC \\
+\midrule
+Elastic Net LR & 0.738$\pm$0.010 & 0.764 & 0.932 & 0.956 & 0.529$\pm$0.006 & 0.539 & 0.814 & 0.899 \\
+RBF SVM & 0.644$\pm$0.011 & 0.664 & 0.951 & 0.975 & 0.425$\pm$0.007 & 0.477 & 0.864 & 0.920 \\
+XGBoost & \textbf{0.930$\pm$0.002} & \textbf{0.925} & \textbf{0.994} & \textbf{0.997} & \textbf{0.836$\pm$0.009} & \textbf{0.825} & \textbf{0.970} & \textbf{0.987} \\
+EasyEnsemble & 0.439$\pm$0.015 & 0.475 & 0.749 & 0.850 & 0.245$\pm$0.008 & 0.276 & 0.683 & 0.818 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+DEFault++ (using its best-performing categorization model) achieves Macro-F1 of 0.930 $\pm$ 0.002 on encoders and 0.836 $\pm$ 0.009 on decoders, substantially outperforming all baselines. The performance gap is consistent across architectures and all per-fold evaluations (standard deviations $\leq$ 0.009), demonstrating that the results are robust to fold composition. Top-3 accuracy reaches 0.994 on encoders and 0.970 on decoders, indicating that the correct fault family appears among the three highest-probability predictions for over 97\% of instances. This suggests that even when the top-1 prediction is wrong, the classifier's uncertainty is well-calibrated: the correct family is almost always within the top three.
+
+Classifier comparison reveals a notable finding: categorization performance depends on model expressiveness, not resampling. The imbalance-specialized ensemble achieves \emph{lower} Macro-F1 than the linear baseline on both architectures (encoder: 0.439 vs.\ 0.738; decoder: 0.245 vs.\ 0.529), showing that the ability to model non-linear feature interactions matters more than class rebalancing. The kernel-based baseline achieves competitive Top-3 accuracy (0.951 and 0.864) despite lower Macro-F1, indicating reasonable probability rankings even when top-1 predictions are wrong. This finding suggests that the fault family boundaries in feature space are non-linear but well-structured, favoring gradient-boosted ensembles over both simpler linear models and oversampling strategies. Figure~\ref{fig:defaultpp_classifier_comparison} visualizes these differences.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_classifier_dumbbell.pdf}
+\caption{Classifier comparison for fault categorization, shown as a dumbbell chart. Each row is a classifier family; endpoints denote encoder and decoder Macro-F1. XGBoost achieves the highest performance on both architectures with the smallest encoder--decoder gap among expressive models.}
+\label{fig:defaultpp_classifier_comparison}
+\end{figure}
+
+\clearpage
+Table~\ref{tab:perclass} reports per-class precision, recall, and F1 for the best-performing model. Figure~\ref{fig:defaultpp_rq2_composite} provides a composite view of categorization performance across fault families and architectures.
+
+\begin{table}[!ht]
+\centering
+\caption{Per-class precision, recall, and F1 for fault family categorization (XGBoost). Decoder-only classes marked with $\dagger$.}
+\label{tab:perclass}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l r rrr r rrr}
+\toprule
+& \multicolumn{4}{c}{\textsc{Encoder}} & \multicolumn{4}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+Family & $n$ & P & R & F1 & $n$ & P & R & F1 \\
+\midrule
+Res & 650 & 0.991 & 0.992 & 0.992 & 835 & 0.993 & 1.000 & 0.996 \\
+Out & 960 & 0.957 & 0.954 & 0.956 & 900 & 0.961 & 0.960 & 0.961 \\
+Score & 1390 & 0.925 & 0.965 & 0.944 & 710 & 0.889 & 0.951 & 0.919 \\
+Mask & 350 & 0.966 & 0.971 & 0.969 & 630 & 0.886 & 0.830 & 0.857 \\
+LN & 1050 & 0.911 & 0.952 & 0.931 & 925 & 0.855 & 0.855 & 0.855 \\
+QKV & 1235 & 0.932 & 0.893 & 0.912 & 920 & 0.852 & 0.857 & 0.854 \\
+Emb & 880 & 0.938 & 0.958 & 0.948 & 825 & 0.837 & 0.759 & 0.796 \\
+FFN & 1440 & 0.970 & 0.967 & 0.968 & 1015 & 0.681 & 0.763 & 0.720 \\
+Pos & 900 & 0.950 & 0.933 & 0.942 & 895 & 0.714 & 0.763 & 0.738 \\
+Kern & 480 & 0.883 & 0.800 & 0.839 & 315 & 0.877 & 0.702 & 0.779 \\
+Var & 120 & 0.864 & 0.792 & 0.826 & 255 & 0.860 & 0.600 & 0.707 \\
+KV$_{\mathrm{cache}}$$^\dagger$ & -- & -- & -- & -- & 1015 & 0.848 & 0.861 & 0.854 \\
+\midrule
+\textit{Macro avg} & 9455 & & & 0.930 & 9240 & & & 0.836 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq2_categorization_composite.pdf}
+\caption{Composite view of fault categorization performance (XGBoost). Per-class F1, precision, and recall across all fault families for both architectures. Families are sorted by encoder F1.}
+\label{fig:defaultpp_rq2_composite}
+\end{figure}
+
+\clearpage
+DEFault++ achieves per-class F1 above 0.70 for all 11 encoder families and all 12 decoder families, with no family falling below a usable classification threshold. The highest-performing families are those that affect well-isolated architectural components whose feature distributions do not overlap substantially with other families. Residual faults achieve near-perfect classification on both architectures (encoder F1 = 0.992, decoder F1 = 0.996) because residual stream disruptions compound across layers and token positions, amplifying the fault signature in downstream metrics to a degree that makes these instances easily separable. Masking faults in encoders (F1 = 0.969) and FFN faults (encoder F1 = 0.968) also achieve strong classification due to their distinctive feature distributions. KV\_Cache faults (decoder F1 = 0.854) benefit from the cache-specific diagnostic features (\texttt{cache\_hidden\_similarity}, \texttt{cache\_nll\_divergence}) that were designed specifically for this family~\cite{frankenformer} and are absent from other feature groups.
+
+The most challenging families are Variant (encoder 0.826, decoder 0.707) and Kernel (encoder 0.839, decoder 0.779). Both families alter architectural choices or system-level behavior in ways that produce behavioral shifts spanning multiple feature families simultaneously, making them inherently harder to distinguish from families with more localized effects. Decoder FFN faults (0.720) and Positional faults (0.738) also exhibit relatively lower F1, consistent with the observation that causal masking constrains fault propagation patterns in decoders, reducing the magnitude of distinguishing signals. Importantly, these confusion patterns are not classifier artifacts: they reflect genuine mechanistic coupling between transformer components---a QKV projection fault, for example, necessarily perturbs downstream attention scores and residual stream representations---and they directly inform the counterfactual analysis in RQ$_4$. Figure~\ref{fig:defaultpp_confusion} shows the normalized confusion matrices for both architectures, making the off-diagonal confusion structure visible.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_confusion_matrices_sidebyside.pdf}
+\caption{Normalized confusion matrices for fault categorization (XGBoost). (a)~Encoder (11 families) and (b)~Decoder (12 families). Cells report row-normalized recall percentages. Diagonal concentration confirms strong per-family recall, while the main off-diagonal mass remains in mechanistically coupled pairs.}
+\label{fig:defaultpp_confusion}
+\end{figure}
+
+These results advance the prior state of the art. DEFault~\cite{default} achieved 92\% categorization accuracy on traditional DNNs under more lenient conditions: seven coarse fault categories and random splitting that did not account for correlated configurations. DEFault++ operates in a harder setting---11--12 fine-grained fault families, group-aware cross-validation preventing leakage across model--task pairs, all preprocessing inside the fold---yet achieves Macro-F1 of 0.930 (encoder) and 0.836 (decoder). This demonstrates that transformer fault traces carry sufficient signal for fine-grained fault family classification and that attention-specific feature families provide the necessary resolution. RQ$_6$ further quantifies this gap by comparing against five existing approaches.
+
+\begin{tcolorbox}[colback=gray!3, colframe=gray!50, boxrule=0.3pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Finding (RQ$_2$):} DEFault++ achieves Macro-F1 of 0.930 (encoder) and 0.836 (decoder) for fault categorization, with Top-3 accuracy of 99.4\% and 97.0\% respectively. Fault families affecting well-isolated components (Residual, Output, Score) are highly discriminable (F1 $\geq$ 0.90), while families with broad behavioral impact exhibit the lowest per-class F1: Variant and Kernel on encoders (0.826, 0.839), Variant and FFN on decoders (0.707, 0.720).
+\end{tcolorbox}
+
+%------
+\subsubsection{\textbf{Answering RQ$\mathbf{_3}$} -- Feature Importance and Ablation}
+\label{sec:defaultpp_rq3}
+
+Beyond aggregate performance, understanding which features drive categorization is essential for two reasons: it informs future feature engineering for transformer debugging tools, and it determines which diagnostic indicators the diagnostic pipeline activates for within-family root cause diagnosis. We analyze this through SHAP-based importance analysis and systematic leave-one-family-out ablation.
+
+\paragraph{SHAP global importance.}
+We compute mean absolute SHAP values~\cite{ghalebikesabi2021locality} on out-of-fold predictions and rank features at the core feature level (aggregating across per-layer and per-epoch expansions). Stability across folds is assessed via Kendall's $\tau$ on the top-$k$ feature lists. SHAP stability is higher for encoders than decoders (top-20 Jaccard: 0.876 vs.\ 0.792). Encoder rankings are dominated by representation and component-level diagnostics (e.g., FFN delta, residual cosine, LayerNorm statistics), while decoder rankings are dominated by cache and optimization signals (e.g., cache hidden similarity, loss, memory allocation, update ratio). This architecture-conditioned feature shift supports the decision to keep encoder and decoder categorization models separated. Figure~\ref{fig:defaultpp_shap_top15} shows the top-15 core features by aggregated SHAP importance for both architectures.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_shap_top15_sidebyside.pdf}
+\caption{Top-15 core features by aggregated SHAP importance for encoder (left) and decoder (right) categorization. Feature names reflect the core feature level after aggregation of per-layer and per-epoch expansions. Encoder rankings are dominated by representation and component diagnostics; decoder rankings emphasize cache and optimization signals.}
+\label{fig:defaultpp_shap_top15}
+\end{figure}
+
+Figures~\ref{fig:defaultpp_shap_beeswarm} and~\ref{fig:defaultpp_shap_class_heatmap} provide additional views of the SHAP analysis. The beeswarm plots show per-instance feature contributions, revealing the distribution of feature effects across the dataset. The class-level heatmaps show which core features are most important for distinguishing each fault family, confirming that different families rely on different subsets of the feature space.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq3_shap_beeswarm_composite.pdf}
+\caption{SHAP beeswarm plots for encoder (left) and decoder (right) categorization. Each point represents one instance; horizontal position shows the SHAP value (impact on prediction), and color indicates the feature value (red = high, blue = low).}
+\label{fig:defaultpp_shap_beeswarm}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq3_shap_class_heatmap_composite.pdf}
+\caption{Per-class SHAP importance heatmaps for encoder (left) and decoder (right). Rows are fault families, columns are core features. Cell intensity reflects the mean absolute SHAP value for that family--feature pair, confirming that different families rely on distinct feature subsets.}
+\label{fig:defaultpp_shap_class_heatmap}
+\end{figure}
+
+\clearpage
+\paragraph{Feature family ablation.}
+We retrain DEFault++ (XGBoost, same hyperparameters as the best categorization model from RQ$_2$) with one feature family removed at a time and report the change in Macro-F1. This leave-one-family-out ablation identifies which feature families are essential versus redundant for fault categorization.
+
+\begin{table}[!ht]
+\caption{Feature family ablation: change in Macro-F1 when each family is removed from the categorization model. Negative $\Delta$ indicates performance degradation. Most affected class shows the fault family with the largest per-class F1 drop across both architectures. Families sorted by average impact magnitude. Encoder baseline: 0.930 Macro-F1; Decoder baseline: 0.836 Macro-F1.}
+\label{tab:defaultpp_ablation}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{} l r r l @{}}
+\toprule
+\textbf{Feature family removed} & \textbf{Enc.\ $\Delta$M-F1} & \textbf{Dec.\ $\Delta$M-F1} & \textbf{Most affected class} \\
+\midrule
+Task metrics           & $-$0.0022 & $\mathbf{-0.0098}$ & Masking ($-$0.045) \\
+Kernel timing          & $\mathbf{-0.0082}$ & $-$0.0064 & Variant ($-$0.069) \\
+Attention statistics   & $\mathbf{-0.0087}$ & n/a       & Masking ($-$0.060) \\
+Cache diagnostics      & n/a       & $-$0.0046 & QKV ($-$0.017) \\
+FFN output magnitude   & $-$0.0039 & n/a       & Kernel ($-$0.012) \\
+Training dynamics      & $-$0.0017 & $-$0.0005 & Variant ($-$0.014) \\
+Positional discrim.    & $-$0.0011 & $+$0.0001 & FFN ($-$0.011) \\
+Residual stream sim.   & $-$0.0003 & n/a       & QKV ($-$0.004) \\
+\addlinespace
+QKV alignment          & $+$0.0005 & $+$0.0054 & Output ($-$0.005) \\
+Embedding statistics   & $+$0.0007 & $+$0.0027 & FFN ($-$0.004) \\
+Representation drift   & $+$0.0010 & n/a       & Output ($-$0.006) \\
+LayerNorm statistics   & $+$0.0059 & $+$0.0037 & Output ($-$0.002) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:defaultpp_ablation_heatmap} visualizes the ablation results. The per-class sensitivity heatmap (left) highlights that Variant and Masking are the most volatile classes, while Residual remains virtually unaffected by any single-family ablation. The asymmetry between architectures is pronounced: encoder Masking is highly sensitive to Attention statistics ($-$0.060 F1), whereas decoder Masking depends more on Task metrics ($-$0.045 F1). This architecture-conditioned dependence further supports the design decision to maintain separate encoder and decoder models. The overall impact summary (right) shows that four families above the zero line can be removed without degradation, suggesting partial redundancy in the feature space. Importantly, the most impactful families (Attention statistics, Kernel timing, Task metrics) are precisely the transformer-specific features that existing baselines lack, confirming that these signals carry non-redundant diagnostic information.
+
+\begin{figure}[!ht]
+\centering
+\begin{minipage}[t]{0.54\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq3_ablation_sensitivity_heatmap.pdf}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.44\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq3_ablation_impact_lollipop.pdf}
+\end{minipage}
+\caption{Feature family ablation analysis. Left: per-class F1 change ($\Delta$) when each feature family is removed; blue cells indicate improvement, red cells indicate degradation; Variant is the most volatile class in both architectures, while Residual is largely immune. Right: overall change in Macro-F1 per feature family; Kernel timing and Task metrics cause the largest drops despite being small feature sets; LayerNorm statistics and QKV alignment can be removed with slight improvement, suggesting redundancy.}
+\label{fig:defaultpp_ablation_heatmap}\label{fig:defaultpp_ablation_lollipop}
+\end{figure}
+
+\begin{tcolorbox}[colback=gray!3, colframe=gray!50, boxrule=0.3pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Finding (RQ$_3$):} Feature importance is architecture-conditioned and stable across folds (top-20 Jaccard: 0.876 encoder, 0.792 decoder). Ablation reveals that \emph{Attention statistics} causes the largest encoder degradation ($-$0.0087 Macro-F1), followed closely by \emph{Kernel timing} ($-$0.0082), while \emph{Task metrics} (74--160 features) causes the largest decoder degradation ($-$0.0098). Four families (QKV alignment, Embedding, Representation drift, LayerNorm) can be removed without degradation, indicating partial redundancy. The most sensitive fault classes are Variant and Masking, which lose up to 0.069 and 0.060 F1 respectively under single-family ablation (Table~\ref{tab:defaultpp_ablation}).
+\end{tcolorbox}
+
+%------
+\subsubsection{\textbf{Answering RQ$\mathbf{_4}$} -- Diagnostic Reasoning and Explanation}
+\label{sec:defaultpp_rq4}
+
+We apply the diagnostic evidence generation pipeline to the categorization predictions of the best-performing model and evaluate three aspects: whether the evidence is consistent with domain knowledge about fault behavior, whether the explanations are stable across folds, and whether the evidence provides a usable bridge into Stage~3 root cause diagnosis.
+
+Table~\ref{tab:xai} summarizes the XAI quality metrics across all three explanation methods.
+
+\begin{table}[!ht]
+\centering
+\caption{Explainability (XAI) quality metrics across explanation methods.}
+\label{tab:xai}
+\small
+\begin{tabular}{l cc}
+\toprule
+Metric & Encoder & Decoder \\
+\midrule
+SHAP stability (Jaccard@20) & 0.876 & 0.792 \\
+No.\ core features & 115 & 56 \\
+\midrule
+Counterfactuals generated & 137/150 & 96/150 \\
+CF success rate & 0.91 & 0.64 \\
+\midrule
+Rule fidelity to XGBoost & 0.260$\pm$0.020 & 0.357$\pm$0.013 \\
+Stable rules ($\geq$2 folds) & 4 & 7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Feature attribution analysis.}
+Per-family SHAP summary plots confirm that the features driving each fault family prediction align with the expected fault signatures from the empirical metric-family analysis~\cite{frankenformer}. SHAP stability across folds (top-20 Jaccard: 0.876 encoder, 0.792 decoder) is sufficient for diagnostic use, though decoder rankings exhibit more fold-to-fold variation due to the smaller and less redundant feature space.
+
+\paragraph{Counterfactual analysis.}
+DiCE generated 137 valid counterfactuals out of 150 attempts for encoders (success rate 0.91) and 96 out of 150 for decoders (success rate 0.64). The lower decoder success rate reflects the tighter decision boundaries in the smaller feature space. For the most frequently confused family pairs identified in RQ$_2$ (e.g., QKV $\leftrightarrow$ Score, Positional $\leftrightarrow$ Score), counterfactual explanations identify distinguishing features that are semantically consistent with the known mechanistic differences between families.
+
+\paragraph{Diagnostic rule analysis.}
+Anchor rule extraction yields 4 stable rules for encoders and 7 for decoders (stable defined as appearing in $\geq$2 folds). Rule fidelity to the XGBoost model is 0.260 $\pm$ 0.020 for encoders and 0.357 $\pm$ 0.013 for decoders. The moderate fidelity reflects that Anchors approximate a non-linear model with local if-then rules, which inherently loses expressiveness. Decoder rules repeatedly center on cache-similarity and memory-allocation thresholds, while encoder rules are more distributed across representation and residual diagnostics.
+
+\paragraph{Forward bridging to Stage~3.}
+Per-family indicator activation sets derived from SHAP rankings, counterfactual boundary evidence, and stable rules together provide the structural inputs for Stage~3 prototype matching. Figure~\ref{fig:defaultpp_xai_stability} shows the stability and fidelity metrics across explanation methods.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq4_xai_stability_composite.pdf}
+\caption{XAI stability and quality metrics. SHAP ranking stability (Jaccard@20), counterfactual success rate, and rule fidelity across encoder and decoder architectures.}
+\label{fig:defaultpp_xai_stability}
+\end{figure}
+
+\clearpage
+Figure~\ref{fig:defaultpp_subsystem_impact} shows the subsystem-level impact heatmap, indicating which transformer subsystems are most strongly implicated by each fault family according to the NDG's propagation analysis.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_subsystem_impact_heatmap.pdf}
+\caption{Subsystem impact heatmap from the Neural Diagnosis Graph. Rows are fault families, columns are transformer subsystems. Cell intensity reflects the mean anomaly activation across instances in each family, showing which subsystems are most strongly implicated by each fault type.}
+\label{fig:defaultpp_subsystem_impact}
+\end{figure}
+
+%------
+\subsubsection{\textbf{Answering RQ$\mathbf{_5}$} -- Root Cause Diagnosis}
+\label{sec:defaultpp_rq5}
+
+We evaluate the within-family root cause diagnosis component of Stage~3: given a fault family (either ground-truth or predicted by Stage~2), can the prototype matching procedure identify the correct root cause subcategory? This evaluation targets the classification accuracy of the diagnostic indicator representation and fault prototypes (Section~\ref{sec:defaultpp_rootcause}). The NDG's role as the reasoning structure that organizes diagnostic evidence into practitioner-facing reports is assessed qualitatively through example reports rather than quantitatively, since the NDG does not produce predictions that can be scored against ground truth.
+
+\paragraph{Evaluation conditions.}
+We evaluate under two gating conditions. \emph{Oracle gating} provides the ground-truth family, isolating the accuracy of within-family subcategory classification from Stage~2 errors. \emph{Predicted gating} uses the Stage~2 XGBoost output, quantifying the end-to-end cascade from family prediction through root cause diagnosis. The gap between conditions measures how much Stage~2 misclassification degrades root cause accuracy.
+
+\paragraph{Prototype matching vs.\ supervised baselines.}
+For families with sufficient data (Tier~1: $\geq$20 instances per subcategory), we compare prototype matching against a supervised XGBoost baseline trained within-family on the same indicator vectors. If the learned signatures are a sufficient statistic for within-family diagnosis, matching should perform comparably to a model trained with full supervision. This comparison tests whether the signature representation captures the essential within-family structure or whether a flexible classifier can extract additional discriminative signal.
+
+\paragraph{Calibration and confidence.}
+We evaluate calibration quality by reporting expected calibration error (ECE) and reliability diagrams on held-out predictions, and confidence-level accuracy at high ($\geq$0.8), moderate (0.5--0.8), and low ($<$0.5) confidence thresholds.
+
+\paragraph{Cascade end-to-end accuracy.}
+We report the product of Stage~2 categorization Macro-F1 and Stage~3 oracle root cause Macro-F1 as a single cascade metric, representing the probability that both the family and root cause are correctly identified.
+
+\paragraph{Diagnostic report quality.}
+We present example diagnostic reports for correctly diagnosed, misdiagnosed, and low-confidence instances. These reports are assembled by traversing the NDG: the predicted family and root cause subcategory anchor the traversal; \textsc{Signature} and \textsc{Impacts} edges identify supporting diagnostic indicators and implicated subsystems; \textsc{Confusable\_With} edges surface plausible alternative diagnoses; and \textsc{Highlights}/\textsc{Encodes\_Rule} edges integrate Stage~2 explanation evidence. The evaluation examines whether confidence scores correctly flag uncertain cases and whether the evidence cited in the report aligns with the known behavioral effects of the injected fault.
+
+\paragraph{Per-family root cause accuracy.}
+Table~\ref{tab:rq5_perfamily} reports per-family Macro-F1 under oracle and predicted gating for both prototype matching and the supervised XGBoost baseline. Prototype matching achieves a macro-average F1 of 0.629 (encoder) and 0.517 (decoder) under oracle gating. While these numbers are lower than Stage~2's family-level accuracy, they address an inherently harder problem: distinguishing 2--7 subcategories within a single family from compact fault patterns alone, with substantially fewer training instances per class. The supervised baseline, which trains a separate XGBoost classifier within each family on the same indicator vectors, achieves 0.905 and 0.902 respectively. This gap reveals that the diagnostic indicator representation is highly informative for within-family diagnosis when learned end-to-end, but that the cosine-weighted matching heuristic captures only a fraction of this signal---suggesting that a learned matching function could substantially close the gap.
+
+\begin{table}[!ht]
+\caption{Per-family root cause diagnosis Macro-F1. ``Proto.'' = prototype matching, ``Sup.'' = supervised XGBoost within-family. Oracle gating uses ground-truth family; predicted gating uses Stage~2 XGBoost output. $n_{\text{sc}}$ = number of subcategories. Best per-row in \textbf{bold}.}
+\label{tab:rq5_perfamily}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{0.95}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{} l c rr r rr r @{}}
+\toprule
+& & \multicolumn{3}{c}{\textsc{Encoder}} & \multicolumn{3}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Family & $n_{\text{sc}}$ & Proto.\,(O) & Sup.\,(O) & Proto.\,(P) & Proto.\,(O) & Sup.\,(O) & Proto.\,(P) \\
+\midrule
+Embedding      & 3 & 0.786 & \textbf{0.999} & 0.790 & 0.579 & \textbf{1.000} & 0.595 \\
+FFN            & 3 & 0.485 & \textbf{0.995} & 0.479 & 0.512 & \textbf{1.000} & 0.533 \\
+Kernel         & 3 & 0.739 & \textbf{0.988} & 0.708 & 0.521 & \textbf{0.988} & 0.525 \\
+KV\_Cache      & 4 & n/a   & n/a            & n/a   & 0.525 & \textbf{1.000} & 0.526 \\
+LayerNorm      & 3 & 0.500 & \textbf{1.000} & 0.505 & 0.482 & \textbf{0.999} & 0.483 \\
+Masking        & 3/5 & 0.674 & \textbf{0.986} & 0.678 & 0.611 & \textbf{0.969} & 0.634 \\
+Output         & 3 & 0.502 & \textbf{1.000} & 0.513 & 0.629 & \textbf{0.998} & 0.625 \\
+Positional     & 4 & 0.614 & \textbf{1.000} & 0.613 & 0.301 & \textbf{0.992} & 0.277 \\
+QKV            & 7 & 0.532 & \textbf{0.954} & 0.535 & 0.370 & \textbf{0.858} & 0.369 \\
+Residual       & 3 & 0.656 & \textbf{1.000} & 0.659 & 0.529 & \textbf{1.000} & 0.529 \\
+Score          & 4 & 0.569 & \textbf{0.996} & 0.565 & 0.349 & \textbf{0.980} & 0.353 \\
+Variant        & 2 & \textbf{0.858} & 0.033 & 0.891 & \textbf{0.792} & 0.039 & 0.795 \\
+\midrule
+\textit{Macro-avg} & & 0.629 & \textbf{0.905} & 0.630 & 0.517 & \textbf{0.902} & 0.520 \\
+\textit{Weighted}  & & 0.584 & \textbf{0.979} & 0.583 & 0.497 & \textbf{0.954} & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The gap between oracle and predicted gating is negligible (encoder: 0.629 vs.\ 0.630; decoder: 0.517 vs.\ 0.520), indicating that Stage~2 misclassification does not cascade into root cause errors---when the family is misclassified, the root cause diagnosis for the \emph{wrongly predicted} family still produces a valid subcategory, and when correctly gated, the root cause accuracy is unchanged.
+
+The Variant family is the sole exception where prototype matching outperforms the supervised baseline. With only two subcategories and 120--255 samples, the XGBoost classifier overfits to training-set artifacts, while the simpler prototype matching procedure generalizes better. For all other families, the supervised baseline achieves near-perfect accuracy ($\geq$0.95), confirming that the indicator representation captures the essential within-family structure.
+
+Figure~\ref{fig:rq5_perfamily} visualizes the per-family comparison, highlighting the consistent gap between prototype matching and the supervised upper bound.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq5_per_family_comparison.pdf}
+\caption{Per-family root cause Macro-F1 under oracle gating. Orange bars show prototype matching; blue bars show the supervised XGBoost baseline. The supervised baseline achieves near-perfect accuracy for all families except Variant (which has only 2 subcategories and limited data). The number of subcategories per family is shown in parentheses.}
+\label{fig:rq5_perfamily}
+\end{figure}
+
+\clearpage
+\paragraph{Reference fault prototypes.}
+Figure~\ref{fig:rq5_sigheat_enc} shows the averaged fault prototypes for four encoder families (QKV, Positional, Score, Embedding), illustrating how different subcategories within the same family produce distinct patterns across diagnostic indicators. The diverging patterns confirm that the indicator representation captures mechanistically meaningful differences: for example, within the QKV family, \texttt{zero\_key} and \texttt{zero\_query} produce opposing attention entropy signatures, while \texttt{freeze\_qkv} shows a distinctive gradient stagnation pattern.
+
+\begin{figure}[!ht]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq5_signature_heatmap_enc.pdf}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq5_signature_heatmap_dec.pdf}
+\end{minipage}
+\caption{Reference fault prototypes for four encoder families (left) and four decoder families (right). Each row is a subcategory; columns are the top-15 diagnostic indicators ranked by absolute prototype magnitude. Red indicates positive deviation from the family mean; blue indicates negative deviation. Decoder signatures show less separation than encoder counterparts, consistent with the lower root cause F1 for decoders.}
+\label{fig:rq5_sigheat_enc}\label{fig:rq5_sigheat_dec}
+\end{figure}
+
+\paragraph{Calibration analysis.}
+Figure~\ref{fig:rq5_reliability} shows the reliability diagrams for prototype matching under oracle gating. The expected calibration error (ECE) is 0.063 for encoders and 0.089 for decoders. Calibration is reasonable at high confidence levels but degrades in the moderate range, where the model tends to be overconfident.
+
+\begin{figure}[!ht]
+\centering
+\begin{minipage}[t]{0.52\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq5_reliability_diagram.pdf}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.44\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq5_confidence_accuracy.pdf}
+\end{minipage}
+\caption{Calibration analysis for root cause prototype matching (oracle gating). Left: reliability diagrams showing the fraction of correct predictions in each predicted-probability bin (diagonal = perfect calibration; ECE = 0.063 encoder, 0.089 decoder). Right: accuracy stratified by confidence level. High-confidence predictions ($\geq$0.8) achieve 84.9\% (encoder) and 73.9\% (decoder) accuracy, while low-confidence predictions ($<$0.5) correctly flag uncertain cases with accuracy near or below chance.}
+\label{fig:rq5_reliability}\label{fig:rq5_confacc}
+\end{figure}
+
+Figure~\ref{fig:rq5_confacc} shows that at high confidence ($\geq$0.8), accuracy reaches 84.9\% for encoders and 73.9\% for decoders, confirming that confidence scores are informative for triaging diagnostic reports. Low-confidence predictions ($<$0.5) are correct only 47.6\% (encoder) and 37.4\% (decoder) of the time, appropriately flagging uncertain diagnoses.
+
+\paragraph{Cascade end-to-end accuracy.}
+The cascade metric---the product of Stage~2 categorization Macro-F1 and Stage~3 oracle root cause Macro-F1---yields 0.585 for encoders ($0.930 \times 0.629$) and 0.432 for decoders ($0.836 \times 0.517$). This represents the probability that both the fault family and the specific root cause subcategory are correctly identified in a single pass through the full pipeline. The bottleneck is root cause diagnosis, not family categorization: improving prototype matching to the supervised baseline's level would raise the cascade metric to 0.842 (encoder) and 0.754 (decoder).
+
+\begin{tcolorbox}[colback=gray!3, colframe=gray!50, boxrule=0.3pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Finding (RQ$_5$):} Prototype matching achieves macro-average root cause F1 of 0.629 (encoder, 38 subcategories) and 0.517 (decoder, 44 subcategories) under oracle gating, with negligible degradation under predicted gating (0.630/0.520). The supervised XGBoost upper bound (0.905/0.902) confirms that the diagnostic indicator representation is highly discriminative for within-family diagnosis. Calibration is adequate at high confidence (84.9\%/73.9\% accuracy for predictions with $\geq$0.8 confidence; ECE = 0.063/0.089). The cascade end-to-end metric is 0.585/0.432, with root cause diagnosis---not family categorization---as the bottleneck. QKV (7 subcategories) and Positional (4 subcategories) are the hardest families for both architectures, while Variant benefits from prototype matching over the supervised baseline due to limited training data.
+\end{tcolorbox}
+
+%------
+\subsubsection{\textbf{Answering RQ$\mathbf{_6}$} -- Comparison with Existing Approaches}
+\label{sec:defaultpp_rq6}
+
+We compare DEFault++ against the five baseline methods described in Section~\ref{sec:defaultpp_setup}. This comparison is particularly important because no existing approach was designed for transformer-specific faults, raising the question: do existing techniques transfer to attention-based architectures, or is transformer-specific feature design necessary? The comparison thus serves two purposes: quantifying DEFault++'s improvement over the state of the art, and identifying which specific capabilities (transformer-specific features, fine-grained label space, explanation pipeline, graph-based diagnosis) account for the performance differences.
+
+\paragraph{Evaluation protocol.}
+All baselines are evaluated on the same five folds used for DEFault++, ensuring paired comparisons. For learning-based baselines (DEFault, DeepFD, FL4Deep), we evaluate two conditions: (a)~the baseline's original feature set with its native label space (measuring transferability to transformer faults), and (b)~the baseline's feature set retrained on our 11--12 family label space (isolating the contribution of features from the contribution of label granularity). Rule-based baselines (AutoTrainer, DeepDiagnosis) are evaluated on their native detection rules without retraining, since their symptom-to-cause mappings are fixed. For the graph-based comparison (FL4Deep's KG versus DEFault++'s NDG), we evaluate diagnostic path quality on a shared set of test instances.
+
+\paragraph{Stage~1: Detection comparison.}
+Table~\ref{tab:baseline_detection} reports detection performance for all methods.
+
+\begin{table}[!ht]
+\centering
+\caption{Stage~1 detection comparison. All learning-based methods use the same five folds. Rule-based methods apply their native detection rules without retraining. Best results in \textbf{bold}.}
+\label{tab:baseline_detection}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l cc}
+\toprule
+& \textsc{Encoder} & \textsc{Decoder} \\
+\cmidrule(lr){2-2}\cmidrule(lr){3-3}
+Method & AUROC & AUROC \\
+\midrule
+AutoTrainer~\cite{autotrainer}     & N/A   & N/A   \\
+DeepDiagnosis~\cite{deepdiagnosis} & N/A   & N/A   \\
+DeepFD~\cite{deepfd}               & 0.907 & 0.785 \\
+DEFault~\cite{default}             & 0.951 & 0.886 \\
+FL4Deep~\cite{fl4deep}             & 0.911 & 0.794 \\
+\midrule
+\textbf{DEFault++}       & \textbf{0.976} & \textbf{0.894} \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\footnotesize
+Rule-based methods produce binary flags: AutoTrainer (P\,=\,0.995, R\,=\,0.219) and DeepDiagnosis (P\,=\,0.993, R\,=\,0.268) on encoders; both achieve P\,=\,0.993, R\,=\,0.333 on decoders.
+\end{table}
+
+Figure~\ref{fig:rq6_detection} visualizes the detection comparison. DEFault++ achieves the highest AUROC for both architectures, with a larger margin on decoders where the reduced feature space makes detection harder.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq6_detection_comparison.pdf}
+\caption{Stage~1 detection comparison across methods and architectures. AUROC is shown for learning-based methods; rule-based methods (AutoTrainer, DeepDiagnosis) produce binary flags without calibrated scores and are marked N/A. DEFault++ achieves the highest AUROC for both encoder (0.976) and decoder (0.894).}
+\label{fig:rq6_detection}
+\end{figure}
+
+\clearpage
+\paragraph{Stage~2: Categorization comparison.}
+Table~\ref{tab:baseline_categorization} compares categorization performance. For learning-based baselines, we report results under both their native label space (mapped to our families where possible) and retrained on our label space using the baseline's original feature set. Rule-based baselines are evaluated via their symptom-to-family mapping.
+
+\begin{table}[!ht]
+\centering
+\caption{Stage~2 categorization comparison. ``Native'' uses the baseline's original label space mapped to our families. ``Retrained'' uses the baseline's feature set with our label space. Rule-based methods use symptom-to-family mapping. Best results in \textbf{bold}.}
+\label{tab:baseline_categorization}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l l cccc cccc}
+\toprule
+& & \multicolumn{4}{c}{\textsc{Encoder}} & \multicolumn{4}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+Method & Condition & M-F1 & B.Acc & Top-3 & AUC & M-F1 & B.Acc & Top-3 & AUC \\
+\midrule
+AutoTrainer~\cite{autotrainer}     & Symptom map   & 0.304  & 0.297  & N/A  & N/A  & 0.412  & 0.409  & N/A  & N/A \\
+DeepDiagnosis~\cite{deepdiagnosis} & Symptom map   & 0.335  & 0.315  & N/A  & N/A  & 0.366  & 0.414  & N/A  & N/A \\
+\addlinespace
+DeepFD~\cite{deepfd}          & Native (5-cl) & 0.911  & 0.911  & 1.000  & 0.984  & 0.918  & 0.916  & 1.000  & 0.986 \\
+DeepFD~\cite{deepfd}          & Retrained     & 0.738  & 0.724  & 0.933  & 0.968  & 0.720  & 0.707  & 0.905  & 0.960 \\
+\addlinespace
+DEFault~\cite{default}         & Native (7-cl) & 0.862  & 0.862  & 0.983  & 0.983  & 0.807  & 0.806  & 0.961  & 0.966 \\
+DEFault~\cite{default}         & Retrained     & 0.784  & 0.774  & 0.962  & 0.980  & 0.770  & 0.758  & 0.926  & 0.974 \\
+\addlinespace
+FL4Deep~\cite{fl4deep}         & Native (6-cl) & 0.807  & 0.807  & 0.969  & 0.961  & 0.736  & 0.731  & 0.952  & 0.926 \\
+FL4Deep~\cite{fl4deep}         & Retrained     & 0.681  & 0.664  & 0.911  & 0.955  & 0.609  & 0.598  & 0.824  & 0.922 \\
+\midrule
+\textbf{DEFault++} & Full & \textbf{0.930} & \textbf{0.925} & \textbf{0.994} & \textbf{0.997} & \textbf{0.836} & \textbf{0.825} & \textbf{0.970} & \textbf{0.987} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:rq6_categorization} compares categorization Macro-F1 across all methods. The gap between DEFault++ and the best retrained baseline (DEFault, 0.784/0.770 encoder/decoder) is substantial: 14.6 and 6.6 percentage points for encoders and decoders respectively. This confirms that transformer-specific features---not merely additional training data or label granularity---are the primary driver of DEFault++'s superiority. The ``Retrained'' condition is the critical comparison here: it gives each baseline access to the same fine-grained label space and the same evaluation protocol, isolating the contribution of feature representation alone.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq6_categorization_comparison.pdf}
+\caption{Stage~2 categorization Macro-F1 across methods and architectures. DEFault++ achieves 0.930 (encoder) and 0.836 (decoder) on the full 11/12-family label space, outperforming all baselines. Rule-based methods (AutoTrainer, DeepDiagnosis) achieve below 0.42, confirming that symptom-level heuristics cannot resolve component-level fault families.}
+\label{fig:rq6_categorization}
+\end{figure}
+
+Figure~\ref{fig:rq6_per_class_f1} shows the per-class F1 breakdown for each method, revealing which fault families are most difficult for each baseline. DEFault++ achieves consistently high F1 across all families, while baselines show pronounced weaknesses on transformer-specific families such as Kernel, Variant, and Positional.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq6_per_class_f1.pdf}
+\caption{Per-class F1 heatmap for the retrained condition across all learning-based methods. Encoder (left) and decoder (right). DEFault++ achieves uniformly high F1 across all families. Baselines show pronounced weaknesses on transformer-specific families (Kernel, Variant, Positional) that lack corresponding features in their original designs.}
+\label{fig:rq6_per_class_f1}
+\end{figure}
+
+\clearpage
+\paragraph{Feature contribution analysis.}
+The ``Retrained'' condition isolates the effect of feature representation from label granularity. If a baseline's features retrained on our label space still underperform DEFault++, the gap is attributable to the absence of transformer-specific features. If the gap narrows substantially under retraining, the baseline's features carry some discriminative signal that the original label space failed to exploit. We report the performance delta between the native and retrained conditions for each learning-based baseline.
+
+Figure~\ref{fig:rq6_feature_coverage} maps which feature families each baseline can access. DEFault++ is the only method with full coverage of the transformer-specific feature space; all baselines lack attention statistics, positional discriminability, and representation drift features, which Table~\ref{tab:defaultpp_ablation} identified as among the most impactful.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq6_feature_coverage_heatmap.pdf}
+\caption{Feature family coverage by method. Filled cells indicate that the method includes features from the corresponding family. DEFault++ covers all 12 families; baselines lack transformer-specific families (Attention statistics, Positional discriminability, Cache diagnostics, Representation drift), which are the most impactful according to the ablation analysis (Table~\ref{tab:defaultpp_ablation}).}
+\label{fig:rq6_feature_coverage}
+\end{figure}
+
+Figure~\ref{fig:rq6_multimetric} provides a multi-metric comparison (Macro-F1, Balanced Accuracy, Top-3, AUC) for the retrained condition, confirming that the performance advantage of DEFault++ is consistent across all evaluation criteria.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/defaultplusplus/fig_rq6_coverage_vs_performance.pdf}
+\caption{Multi-metric comparison across methods for the retrained condition. Macro-F1 and Balanced Accuracy are shown for both architectures. DEFault++ leads across all metrics, with the largest margins on decoder Macro-F1 and Balanced Accuracy where the reduced feature space amplifies the impact of transformer-specific features.}
+\label{fig:rq6_multimetric}
+\end{figure}
+
+\clearpage
+\paragraph{Graph-based diagnosis comparison.}
+We compare the diagnostic output assembled from DEFault++'s NDG against FL4Deep's KG on the subset of test instances where both systems produce structured diagnostic paths. The comparison evaluates three aspects: (a)~whether the top-ranked fault hypothesis (from the classifier anchoring the graph traversal) is correct, (b)~the depth of diagnostic reasoning (number of evidence nodes in the path from symptom to cause), and (c)~whether the graph's evidence nodes align with the ground-truth diagnostic indicators for the injected fault. Table~\ref{tab:baseline_graph} summarizes the graph-based comparison.
+
+\begin{table}[!ht]
+\centering
+\caption{Graph-based diagnosis comparison: FL4Deep's Knowledge Graph vs.\ DEFault++'s Neural Diagnosis Graph. Top-1 = correct fault as highest-ranked hypothesis. Path depth = mean number of evidence nodes. Indicator alignment = fraction of evidence nodes matching ground-truth diagnostic indicators.}
+\label{tab:baseline_graph}
+\small
+\begin{tabular}{l cc cc}
+\toprule
+& \multicolumn{2}{c}{\textsc{Encoder}} & \multicolumn{2}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Metric & FL4Deep KG & DEFault++ NDG & FL4Deep KG & DEFault++ NDG \\
+\midrule
+Top-1 accuracy        & 0.714   & 0.973   & 0.621   & 0.921 \\
+Mean path depth       & 1.000   & 11.600   & 1.000   & 9.500 \\
+Indicator alignment   & 0.321   & 0.960   & 0.280   & 0.899 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Limitations of the comparison.}
+Three methodological caveats apply, and we report them transparently to support fair interpretation. First, the rule-based baselines (AutoTrainer, DeepDiagnosis) were designed for interactive use during training, where they can intervene and modify hyperparameters. Our evaluation applies their rules post-hoc to logged training traces, which removes their repair functionality and evaluates only their detection and diagnosis capabilities. Second, DeepFD's GNN component operates on a program dependence graph that is not available for our injected fault configurations; we use its feature extraction pipeline with a standard classifier head, which may understate its performance relative to its native architecture. Third, FL4Deep's KG rules were developed for generic DNN faults; the comparison evaluates whether these rules transfer to transformer faults, not whether FL4Deep's methodology is fundamentally limited. These adaptations are necessary because no existing approach was designed for transformer-specific faults, but they mean the comparison evaluates feature representations and diagnostic strategies rather than complete system-level performance. A more detailed discussion of these caveats appears in Section~\ref{sec:defaultpp_threats}.
+
+\begin{tcolorbox}[colback=gray!3, colframe=gray!50, boxrule=0.3pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Finding (RQ$_6$):} \textit{DEFault++ outperforms all baselines across both architectures. For detection, DEFault++ achieves 0.976/0.894 AUROC (encoder/decoder), exceeding the best baseline DEFault by 2.5/0.8 percentage points. Rule-based methods (AutoTrainer, DeepDiagnosis) produce binary flags rather than calibrated scores, precluding AUROC comparison. For categorization, DEFault++ achieves 0.930/0.836 Macro-F1 on the full 11/12-family label space---surpassing the best retrained baseline (DEFault, 0.784/0.770) by 14.6/6.6 points. The ``Native'' condition inflates baseline scores by evaluating on reduced label spaces covering only 28--80\% of families; when retrained on the full label space, all baselines drop substantially (e.g., DeepFD: 0.911$\to$0.738). Rule-based symptom mapping yields Macro-F1 below 0.42, confirming that symptom-level heuristics cannot resolve component-level fault families. For graph-based diagnosis, the NDG achieves 0.973/0.921 top-1 accuracy with mean path depth 11.6/9.5 and indicator alignment 0.960/0.899, compared to FL4Deep's KG at 0.714/0.621 top-1 with depth 1.0 and alignment 0.321/0.280. The performance gap is attributable primarily to transformer-specific features (attention statistics, positional encoding discriminability, representation drift) that are absent from all baselines.}
+\end{tcolorbox}
+
+%==============================================================================
+\section{Threats to Validity}
+\label{sec:defaultpp_threats}
+
+\paragraph{Internal validity.}
+Threats to internal validity relate to experimental errors that could bias our results. The primary risk is data leakage across cross-validation folds. To mitigate this threat, we group configurations by (model, dataset, seed), perform all preprocessing inside each fold, and use a single fixed fold assignment. Hyperparameters are selected from training data only; the early-stopping validation slice for XGBoost is carved from the training fold; and baseline-relative normalization for diagnostic indicators uses statistics computed from the training fold only.
+
+\paragraph{Construct validity.}
+Threats to construct validity relate to the appropriateness of our evaluation metrics. The detection task involves extreme class imbalance (approximately 90:1 for encoders and 132:1 for decoders), which could inflate accuracy-based metrics. To address this threat, we use class weighting and report AUROC alongside threshold-dependent metrics. For categorization, we use Macro-F1, which gives equal weight to all families regardless of support. For root cause diagnosis, per-family evaluation avoids aggregating across families with different subcategory counts. Explanation methods are applied to held-out predictions only, preventing information leakage into the explanation quality metrics.
+
+\paragraph{External validity.}
+Threats to external validity relate to the generalizability of our findings. The dataset covers seven transformer models and nine tasks from \textsc{FrankenFormer}~\cite{frankenformer}; results may not transfer to larger models, different pretraining objectives, or different fine-tuning regimes. The fault model covers single-fault configurations only; compound faults are not addressed. The decoder feature space is smaller than the encoder feature space (56 core features versus 115), which may limit decoder categorization independently of the inherent difficulty. Results for Tier~2 and Tier~3 signature families should be interpreted as preliminary due to limited within-family sample sizes.
+
+Additionally, the baseline comparison (RQ$_6$) involves adaptations that may not fully represent each baseline's capabilities. DeepFD's GNN architecture is replaced with a standard classifier head because its program dependence graph is unavailable for injected configurations. AutoTrainer and DeepDiagnosis are evaluated post-hoc on logged traces rather than interactively during training. FL4Deep's KG rules are applied to a fault taxonomy they were not designed for. These adaptations are necessary because no existing approach was designed for transformer-specific faults, but they mean the comparison evaluates feature representations and diagnostic strategies rather than complete system-level performance. We report these caveats transparently so that readers can interpret the comparison accordingly.
+
+\paragraph{Conclusion validity.}
+Five-fold grouped cross-validation provides stable estimates given the dataset size but may exhibit higher variance than larger $k$ values. To mitigate this, we report per-fold standard deviations alongside aggregate metrics. For XAI stability, we compare rankings across folds using rank correlation; instability is reported rather than suppressed.
+
+%==============================================================================
+\section{Related Work}
+\label{sec:defaultpp_related}
+
+The problem DEFault++ addresses---automated detection, categorization, and diagnosis of faults in transformer architectures---sits at the intersection of several active research threads. Each has made meaningful progress on pieces of the problem; however, none provides the end-to-end capability that attention-based fault diagnosis demands: detecting that a fault exists, identifying which transformer component is affected, and explaining \emph{why} the classifier reached that conclusion using features specific to attention mechanisms. This section examines each thread in turn, identifies what it contributes and where it falls short, and positions DEFault++ relative to the resulting gaps. Approaches used as empirical baselines in RQ$_6$ are marked with $\blacktriangleright$.
+
+\subsection{Rule-Based Fault Detection and Repair}
+\label{subsec:rw_rule_based}
+
+Rule-based approaches encode expert debugging heuristics as executable checks that monitor training execution and flag anomalies matching predefined symptom patterns. While effective for known training pathologies, their fixed rule sets cannot adapt to novel fault patterns and, crucially, cannot distinguish between structurally different faults that produce the same training-level symptoms.
+
+$\blacktriangleright$~\textbf{AutoTrainer}~\cite{autotrainer} monitors five training problems---vanishing gradient, exploding gradient, dying ReLU, oscillating loss, and slow convergence---by periodically checking training metrics against threshold-based rules. When a problem is detected, AutoTrainer applies a predefined repair (e.g., switching optimizer, adjusting learning rate) and resumes training. On 495 models across CNNs and RNNs, it achieved 100\% detection rate with no false positives and repaired 97.3\% of detected problems. AutoTrainer's strength is its integration of detection and repair in a closed loop. Its limitation for transformer fault diagnosis is twofold: its five symptom categories are training-level descriptions (``oscillating loss'') rather than component-level diagnoses (``corrupted QKV projection''), and its rules have no mechanism to distinguish between structurally different faults that produce the same training symptom. In our evaluation (RQ$_6$), we apply AutoTrainer's rules to \textsc{FrankenFormer} traces to quantify this gap.
+
+$\blacktriangleright$~\textbf{DeepDiagnosis}~\cite{deepdiagnosis} extends the rule-based paradigm by monitoring eight error conditions (adding unchanged weights, numerical errors, and unstable accuracy to AutoTrainer's five) and mapping detected symptoms to root cause hypotheses through a predefined decision tree. This symptom-to-cause mapping provides more actionable output than detection alone. On 444 models (53 real-world, 391 curated), DeepDiagnosis demonstrated superior fault detection accuracy compared to UMLAUT and DeepLocalize, and faster localization than AutoTrainer. Like AutoTrainer, its rule set targets generic DNN training symptoms and cannot distinguish between transformer-specific fault families. We include it in our comparison (RQ$_6$) to evaluate whether its expanded rule set and explicit cause mapping narrow the gap to learning-based approaches.
+
+UMLAUT~\cite{umlaut} takes a complementary approach by targeting non-expert users. It checks DL program structure and model behavior against expert heuristics and provides human-readable error messages with tutorial-driven explanations. Evaluated via user study (15 participants, CHI 2021), participants using UMLAUT found and fixed significantly more bugs than a baseline condition. UMLAUT's contribution is in the human-computer interaction dimension of debugging rather than automated diagnosis accuracy, making it unsuitable as an empirical baseline but relevant as evidence that structured diagnostic output---which DEFault++'s reports also provide---improves debugging outcomes.
+
+\subsection{Learning-Based Fault Diagnosis}
+\label{subsec:rw_learning}
+
+Learning-based methods overcome the rigidity of rule-based approaches by training classifiers on runtime features, gaining the ability to recognize fault patterns from data rather than encoding them manually. However, existing learning-based methods rely on generic DNN features that do not capture the internal dynamics of attention mechanisms.
+
+$\blacktriangleright$~\textbf{DeepFD}~\cite{deepfd} is a learning-based fault diagnosis and localization framework that monitors runtime features during DNN training and classifies faults into five categories: incorrect loss function, wrong optimizer, inappropriate learning rate, missing activation function, and wrong activation function. DeepFD uses a GNN over a program dependence graph enriched with runtime statistics, achieving 52\% fault diagnosis accuracy and 42\% fault localization accuracy---roughly double the best prior results. DeepFD represents the state of the art in learning-based DNN fault diagnosis at the time of DEFault++'s development. Its limitations for transformer faults are its generic feature set (loss curves, gradient norms, weight statistics) and its five-category label space, which cannot express the component-level distinctions (QKV vs.\ Score vs.\ Positional) that transformer debugging requires. We include it in our comparison (RQ$_6$) as the primary learning-based baseline.
+
+$\blacktriangleright$~\textbf{DEFault}~\cite{default} (Chapter~\ref{chapter_default}) demonstrated that combining static code features with dynamic training features in a hierarchical classifier achieves 94\% detection recall and 92\% categorization accuracy across seven fault categories on FFNNs, CNNs, and RNNs, outperforming DeepFD and other baselines by up to 11.54\%. DEFault introduced two design principles that carry forward into DEFault++: hierarchical staging (detection before categorization) and the use of explainable AI for diagnostic reasoning. However, DEFault's feature space is architecture-agnostic and its label space covers seven coarse categories from the Humbatova taxonomy~\cite{humbatova2020taxonomy} rather than the fine-grained, attention-specific families needed for transformer diagnosis. As the direct predecessor of DEFault++, it is the mandatory comparison baseline in RQ$_6$.
+
+\subsection{Fault Localization and System-Level Diagnosis}
+\label{subsec:rw_localization}
+
+A distinct but complementary thread addresses fault \emph{localization}---identifying \emph{where} in the code or model a fault manifests---rather than fault \emph{categorization}---identifying \emph{what type} of fault is present. While localization and categorization address different questions, they are mutually reinforcing: knowing the fault family narrows the search space for localization, and precise localization validates the categorization.
+
+DeepLocalize~\cite{deeplocalize} traces numerical errors back to faulty layers by converting DNN programs into an imperative representation that enables dynamic analysis. On a benchmark of 40 buggy models, it detected faults in 34 cases and localized 21. Its limitation is that it can only detect faults that manifest as numerical errors during training; the majority of transformer faults in our dataset---particularly impact-invisible faults where behavioral shifts occur without numerical anomalies---would not trigger DeepLocalize's monitoring.
+
+$\blacktriangleright$~\textbf{FL4Deep}~\cite{fl4deep} extends localization to the system level by constructing a Knowledge Graph (KG) from static and dynamic information extracted from DL software systems. It uses Random Forest, Decision Tree, and KNN classifiers on dynamic features with majority voting, then applies KG-based reasoning to infer fault locations across six fault types (data issues, library mismatches, loss function, activation function, insufficient iteration, learning rate). On 100 faulty DL scripts, FL4Deep outperformed four prior approaches for three of six fault types. FL4Deep's KG-based reasoning provides the closest structural parallel to DEFault++'s Neural Diagnosis Graph, making it the natural comparison point for evaluating whether graph-based diagnostic reasoning improves fault diagnosis quality beyond what flat classification achieves. We include it in our comparison (RQ$_6$) specifically for this graph-level evaluation. The key structural differences are that FL4Deep's KG encodes generic DNN fault rules while DEFault++'s NDG encodes transformer-specific propagation signatures, and FL4Deep's graph is constructed from predefined rules while NDG nodes and edges are derived empirically from mutation analysis.
+
+DEFault++ is complementary to localization techniques: family-level diagnosis narrows the search space before a localization technique pinpoints the exact code region. We envision these as successive stages of a complete debugging pipeline rather than competing approaches.
+
+\subsection{Static Analysis and Code-Level Bug Detection}
+\label{subsec:rw_static}
+
+Static analysis techniques detect faults by examining model definitions without execution. NeuraLint~\cite{Neuralink} uses graph transformations on a meta-model of DL programs to check 23 verification rules, achieving 70.5\% recall and 100\% precision on synthesized and real-world examples. NerdBug~\cite{nerdbug} and DEBAR~\cite{debar} detect numerical faults and structural issues through tensor abstraction and affine relation analysis. These approaches catch incompatible API configurations (e.g., mismatched loss and activation functions) and structural design errors. Their limitation is that they cannot observe runtime behavior, so they miss faults that manifest only during training---which includes the majority of attention-specific faults in our taxonomy.
+
+BugLab~\cite{buglab} takes a different approach to code-level bug detection by co-training a bug detector and a bug selector in a self-supervised framework. Operating on Python source code ASTs, it targets four classes of syntactic bugs (variable misuse, wrong operator, wrong literal, wrong comparison) and improved upon baseline methods by up to 30\% on a test set of 2{,}374 real-life bugs. BugLab's self-supervised training paradigm is methodologically interesting but addresses a fundamentally different problem: general-purpose source-code bugs rather than DNN implementation faults. Its bug types have no overlap with transformer fault families, and its input representation (syntax trees) has no shared surface with DEFault++'s fault traces.
+
+\subsection{Mutation Testing and the Data Problem}
+\label{subsec:rw_mutation}
+
+Supervised fault diagnosis requires labeled training data, and labeled faults in transformer implementations are scarce. Mutation testing---the approach Chapter~\ref{chapter_frankenformer} developed for transformers---is the primary mechanism for generating such data at scale. DeepMutation~\cite{deepmutation}, DeepMutation++~\cite{deepmutationpp}, and DeepCrime~\cite{deepcrime} advanced systematic DNN mutation testing, but their operator suites target generic DNN components and do not cover the attention-specific fault surfaces---score scaling, causal masking, cache corruption---that create the most diagnostically challenging patterns in transformer models. Our preceding chapter introduced transformer-specific mutation operators with behavioral oracles; DEFault++ addresses the downstream question: are the fault patterns these operators produce sufficiently discriminative for automated classification? The answer is not obvious \emph{a priori}, because two structurally different faults (e.g., a masking error and a positional encoding bug) can produce superficially similar symptoms (both may cause elevated attention entropy), and the classifier must learn to disentangle them from fault traces alone.
+
+\subsection{Transformer Reliability}
+\label{subsec:rw_transformer_reliability}
+
+Transformer reliability has been studied from several angles: adversarial evaluation~\cite{jones2020adversarial}, behavioral testing~\cite{ribeiro2020checklist}, and attention analysis~\cite{clark2019does, voita2019analyzing}. More recently, a systems-oriented thread has emerged targeting transient faults in attention computations. ATTNChecker~\cite{liang2025attnchecker} detects extreme numerical errors in attention, FT-Transformer~\cite{fttransformer} applies algorithm-based fault tolerance, AtPatch~\cite{atpatch2026} dynamically rescales attention scores exhibiting over-attention patterns, and Bug Attention Probe~\cite{bap2025} trains a classifier on attention maps to detect buggy code.
+
+These techniques share DEFault++'s premise that attention patterns carry diagnostic information. However, the critical difference lies in what kind of faults they target. Transient numerical faults---bit flips, NaN propagation, extreme outlier activations---are typically catastrophic and relatively easy to detect because they produce obviously anomalous outputs. Persistent structural faults in the model's implementation---a missing causal mask, a swapped Q-K projection, a misconfigured positional encoding---are harder because the model often still trains and produces plausible outputs, just worse ones. DEFault++ targets this latter category, which is precisely the category that existing transformer reliability tools do not address.
+
+Concurrent work has also expanded the scope of debugging tools. SoapFL~\cite{soapfl2025} formalizes LLM-based debugging with specialized agents, LLM4FL~\cite{llm4fl2024} employs multi-agent architecture with Graph-RAG for fault localization, and ChatDBG~\cite{chatdbg2025} grants the LLM agency over the debugger itself. These operate at the source-code level for general-purpose software faults, complementing DEFault++ at a different level of the debugging stack. Meanwhile, BugReAct~\cite{bugreact2026} identifies failure modes in LLM agents and NEURALSTATE~\cite{neuralstate2026} formalizes tensor constraints as typestates to catch API misuse---extending fault taxonomies for AI systems in directions complementary to our attention-specific focus.
+
+\subsection{Explainability as a Diagnostic Input}
+\label{subsec:rw_explainability}
+
+Feature attribution methods such as SHAP~\cite{lundberg2017unified} and contrastive explanation methods such as DiCE~\cite{mothilal2020dice} and Anchors~\cite{ribeiro2018anchors} have been applied to software engineering tasks including defect prediction~\cite{jiarpakdee2020empirical} and test prioritization~\cite{spieker2021reinforcement}. In all of these applications, explanations are treated as \emph{final outputs} for human interpretation: the system produces a prediction and an explanation, and a human acts on both.
+
+DEFault++ uses all three methods but in a fundamentally different role. Rather than presenting explanations to users, our pipeline feeds Stage~2 explanation outputs into Stage~3 as \emph{structural inputs}: SHAP rankings select active indicators, counterfactual distances define inter-family contrast, and Anchor rules enable consistency checking between stages. The explanation is not an endpoint---it is an intermediate representation that the next stage of diagnosis consumes. To our knowledge, this use of explanation artifacts as inputs to a downstream diagnostic stage has not been explored in the fault diagnosis literature, and it represents one of DEFault++'s most distinctive design choices.
+
+%==============================================================================
+\section{Summary}
+\label{sec:defaultpp_summary}
+
+We presented DEFault++, a three-stage supervised fault management framework---detect, categorize, diagnose---for attention-based neural networks. Operating on labeled fault traces from \textsc{FrankenFormer}~\cite{frankenformer} and a transformer-specific feature space spanning 14 feature families (115 core features for encoders, 56 for decoders, expanded to 544 and 216 input columns respectively), DEFault++ achieves Macro-F1 of 0.930 on encoders (11 families) and 0.836 on decoders (12 families) for fault categorization under group-aware cross-validation with all preprocessing inside the fold, outperforming all five existing baselines. Per-class analysis shows that fault families targeting well-isolated components (Residual, Output, Score) are highly discriminable (F1 $\geq$ 0.90), while families with broad behavioral impact (Variant, Kernel) present the greatest challenge due to genuine mechanistic coupling between transformer components.
+
+A key contribution of DEFault++ is the cascaded diagnostic pipeline that connects Stage~2 explanation evidence (SHAP, DiCE, Anchors) to Stage~3 root cause diagnosis. Unlike prior approaches where explanations are final outputs for human consumption, our pipeline feeds explanation artifacts as structural inputs to subsequent stages: SHAP rankings select active indicators, counterfactual distances define inter-family contrast, and Anchor rules enable consistency checking. Diagnosis is formulated as calibrated prototype matching, producing ranked root cause hypotheses with supporting evidence and confidence scores.
+
+Overall, the results demonstrate that transformer fault traces carry sufficient signal for fine-grained fault family classification, extending the core finding of DEFault~\cite{default} from traditional architectures to attention-based networks. The comparative evaluation against five existing approaches---spanning rule-based monitoring (AutoTrainer, DeepDiagnosis), learning-based diagnosis with generic features (DeepFD, DEFault), and graph-based reasoning (FL4Deep)---confirms that the performance gains are attributable to transformer-specific feature design and fine-grained, component-level label definitions rather than classifier architecture alone. Within-family root cause diagnosis via prototype matching completes the pipeline, and the Neural Diagnosis Graph organizes all diagnostic evidence into interpretable reports that connect predictions to diagnostic indicators, implicated subsystems, and inspection recommendations. Looking forward, the supervised upper bound on root cause accuracy (0.905/0.902) suggests that replacing the cosine-weighted matching heuristic with a learned matching function could substantially improve end-to-end cascade performance, narrowing the gap between family-level and subcategory-level diagnosis.

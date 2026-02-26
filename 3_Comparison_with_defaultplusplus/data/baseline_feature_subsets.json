@@ -1,0 +1,168 @@
+{
+  "_description": "Maps each baseline's feature types to regex patterns over DEFault++ feature names. For 'Retrained' evaluation: select only features matching these patterns, drop all others, then train XGBoost on your 11/12 labels using the same 5-fold splits. Structural features (arch_enc, layer_idx_num, severity_scalar) are EXCLUDED for all baselines since no baseline uses them.",
+
+  "AutoTrainer": {
+    "feature_types_in_paper": [
+      "training loss trajectory",
+      "training accuracy trajectory",
+      "per-layer gradient magnitude"
+    ],
+    "our_feature_patterns": [
+      "^abs_loss_",
+      "^abs_accuracy_",
+      "^abs_update_ratio_",
+      "^abs_weight_mean",
+      "^abs_weight_std",
+      "^abs_grad_norm",
+      "^abs_grad_abs_max",
+      "^abs_grad_zero_ratio"
+    ],
+    "exclude_structural": true,
+    "notes": "AutoTrainer monitors loss, accuracy, and gradient magnitudes. Our update_ratio, weight_*, and grad_* features proxy gradient/weight monitoring. Decoder has explicit grad_norm/grad_abs_max instead of weight_mean/std. No validation metrics, no logit-level features, no attention/FFN internals."
+  },
+
+  "DeepDiagnosis": {
+    "feature_types_in_paper": [
+      "layer weights",
+      "neuron activations",
+      "gradient values",
+      "loss values",
+      "accuracy values"
+    ],
+    "our_feature_patterns": [
+      "^abs_loss_",
+      "^abs_accuracy_",
+      "^abs_update_ratio_",
+      "^abs_weight_mean",
+      "^abs_weight_std",
+      "^abs_activation_mean",
+      "^abs_activation_std",
+      "^abs_ffn_active",
+      "^abs_grad_norm",
+      "^abs_grad_abs_max",
+      "^abs_grad_zero_ratio"
+    ],
+    "exclude_structural": true,
+    "notes": "DeepDiagnosis adds activation monitoring over AutoTrainer. Our activation_mean/std and ffn_active features capture neuron-level behavior. Decoder has grad_norm/grad_abs_max for gradient monitoring."
+  },
+
+  "DeepFD": {
+    "feature_types_in_paper": [
+      "loss per epoch",
+      "accuracy per epoch",
+      "mean of weights",
+      "std of weights",
+      "NaN weight count",
+      "large weight count",
+      "constant mean weight count",
+      "constant std weight count",
+      "decrease_acc count",
+      "increase_loss count",
+      "dying ReLU count",
+      "activation statistics",
+      "vanishing gradient indicator",
+      "exploding gradient indicator"
+    ],
+    "statistical_operators": ["variance", "skewness", "mean", "max", "min", "median", "std", "SEM"],
+    "our_feature_patterns": [
+      "^abs_loss_",
+      "^abs_accuracy_",
+      "^abs_val_loss_",
+      "^abs_val_accuracy_",
+      "^abs_update_ratio_total",
+      "^abs_update_ratio_emb",
+      "^abs_weight_mean",
+      "^abs_weight_std",
+      "^abs_activation_mean",
+      "^abs_activation_std",
+      "^abs_ffn_active",
+      "^abs_grad_norm",
+      "^abs_grad_abs_max",
+      "^abs_grad_zero_ratio"
+    ],
+    "exclude_structural": true,
+    "notes": "DeepFD uses 20 runtime data items expanded to 160 features via 8 statistical operators. Our features already have early/mid/final window aggregates (similar to their statistical operators). We include both train and val loss/accuracy to match their scope. Decoder has grad_norm/grad_abs_max for vanishing/exploding gradient indicators. No attention, positional, layernorm, or representation features."
+  },
+
+  "DEFault_ICSE25": {
+    "feature_types_in_paper": {
+      "dynamic_23": [
+        "loss", "val_loss", "train_acc", "val_acc",
+        "large_weight_count", "cons_mean_weight_count", "cons_std_weight_count", "nan_weight_count",
+        "acc_gap_too_big", "loss_oscillation", "decrease_acc_count", "increase_loss_count",
+        "dying_relu", "activation_statistics", "saturated_activation",
+        "gradient_vanish", "gradient_explode", "nan_gradients_count", "gradient_statistics",
+        "adj_lr",
+        "cpu_utilization", "gpu_memory_utilization", "memory_usage"
+      ],
+      "static_5": [
+        "layer_counts", "neuron_counts", "input_shapes", "output_shapes", "shape_mismatch"
+      ]
+    },
+    "our_feature_patterns": [
+      "^abs_loss_",
+      "^abs_val_loss_",
+      "^abs_accuracy_",
+      "^abs_val_accuracy_",
+      "^abs_update_ratio_total",
+      "^abs_update_ratio_emb",
+      "^abs_update_ratio_classifier",
+      "^abs_weight_mean",
+      "^abs_weight_std",
+      "^abs_activation_mean",
+      "^abs_activation_std",
+      "^abs_ffn_active",
+      "^abs_grad_norm",
+      "^abs_grad_abs_max",
+      "^abs_grad_zero_ratio",
+      "^abs_peak_mem",
+      "^abs_step_time"
+    ],
+    "exclude_structural": true,
+    "notes": "DEFault has the broadest dynamic feature set among learning baselines. We include peak_mem and step_time as proxies for their hardware utilization features. Decoder has explicit grad features for gradient monitoring. Their static features (layer counts, shapes) have no direct equivalent in our feature set -- this is a known limitation of the retrained comparison."
+  },
+
+  "FL4Deep": {
+    "feature_types_in_paper": {
+      "static": [
+        "dataset split ratio",
+        "python version",
+        "library versions",
+        "layer types",
+        "activation functions",
+        "loss function",
+        "optimizer",
+        "learning rate"
+      ],
+      "dynamic": [
+        "neuron weights per epoch",
+        "training accuracy per epoch",
+        "training loss per epoch",
+        "validation accuracy per epoch",
+        "validation loss per epoch"
+      ],
+      "statistical_operators": ["min", "max", "median", "mean", "variance", "std", "skewness", "SEM"]
+    },
+    "our_feature_patterns": [
+      "^abs_loss_",
+      "^abs_val_loss_",
+      "^abs_accuracy_",
+      "^abs_val_accuracy_",
+      "^abs_update_ratio_total",
+      "^abs_update_ratio_emb",
+      "^abs_weight_mean",
+      "^abs_weight_std"
+    ],
+    "exclude_structural": true,
+    "notes": "FL4Deep's dynamic features are a subset of DeepFD's. Its static features (versions, layer types, optimizer choice) have no equivalent in our feature set. The KG reasoning component cannot be replicated -- retrained evaluation uses only the feature-based component."
+  },
+
+  "_feature_count_estimates": {
+    "_note": "Approximate number of our features matching each baseline's patterns. Run the regex patterns against enc/dec feature_names to get exact counts.",
+    "AutoTrainer": "~60-80 features (loss + accuracy + update_ratio + weight)",
+    "DeepDiagnosis": "~70-90 features (AutoTrainer + activation)",
+    "DeepFD": "~80-100 features (loss + accuracy + val + weight + activation + update_ratio)",
+    "DEFault_ICSE25": "~90-110 features (DeepFD + val_gap + classifier ratio + peak_mem + step_time)",
+    "FL4Deep": "~50-70 features (loss + val + accuracy + weight + update_ratio, no activation)"
+  }
+}

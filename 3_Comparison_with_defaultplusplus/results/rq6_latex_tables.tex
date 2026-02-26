@@ -1,0 +1,73 @@
+% ===== TABLE 1: DETECTION =====
+\begin{table}[!htbp]
+\centering
+\caption{Stage~1 detection comparison. All learning-based methods use the same five folds. Rule-based methods apply their native detection rules without retraining. Best results in \textbf{bold}.}
+\label{tab:baseline_detection}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l cc cc}
+\toprule
+& \multicolumn{2}{c}{\textsc{Encoder}} & \multicolumn{2}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Method & AUROC & AUPRC & AUROC & AUPRC \\
+\midrule
+AutoTrainer~\cite{autotrainer} & N/A & N/A & N/A & N/A \\
+DeepDiagnosis~\cite{deepdiagnosis} & N/A & N/A & N/A & N/A \\
+DeepFD~\cite{deepfd} & 0.907 & 0.999 & 0.785 & 0.998 \\
+DEFault~\cite{default} & 0.951 & 0.999 & 0.886 & 0.999 \\
+FL4Deep~\cite{fl4deep} & 0.911 & 0.999 & 0.794 & 0.998 \\
+\midrule
+\textbf{DEFault++} & \textbf{0.976} & \textbf{1.000} & 0.894 & 0.999 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===== TABLE 2: CATEGORIZATION =====
+\begin{table}[!htbp]
+\centering
+\caption{Stage~2 categorization comparison. ``Native'' uses the baseline's original label space mapped to our families. ``Retrained'' uses the baseline's feature set with our label space. Rule-based methods use symptom-to-family mapping. Best results in \textbf{bold}.}
+\label{tab:baseline_categorization}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l l cccc cccc}
+\toprule
+& & \multicolumn{4}{c}{\textsc{Encoder}} & \multicolumn{4}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+Method & Condition & M-F1 & B.Acc & Top-3 & AUC & M-F1 & B.Acc & Top-3 & AUC \\
+\midrule
+AutoTrainer~\cite{autotrainer} & Symptom map & 0.304 & 0.297 & N/A & N/A & 0.412 & 0.409 & N/A & N/A \\
+DeepDiagnosis~\cite{deepdiagnosis} & Symptom map & 0.335 & 0.315 & N/A & N/A & 0.366 & 0.414 & N/A & N/A \\
+\addlinespace
+DeepFD~\cite{deepfd} & Native (5-cl) & 0.911 & 0.911 & 1.000 & 0.984 & 0.918 & 0.916 & 1.000 & 0.986 \\
+DeepFD~\cite{deepfd} & Retrained & 0.738 & 0.724 & 0.933 & 0.968 & 0.720 & 0.707 & 0.905 & 0.960 \\
+\addlinespace
+DEFault~\cite{default} & Native (7-cl) & 0.862 & 0.862 & 0.983 & 0.983 & 0.807 & 0.806 & 0.961 & 0.966 \\
+DEFault~\cite{default} & Retrained & 0.784 & 0.774 & 0.962 & 0.980 & 0.770 & 0.758 & 0.926 & 0.974 \\
+\addlinespace
+FL4Deep~\cite{fl4deep} & Native (6-cl) & 0.807 & 0.807 & 0.969 & 0.961 & 0.736 & 0.731 & 0.952 & 0.926 \\
+FL4Deep~\cite{fl4deep} & Retrained & 0.681 & 0.664 & 0.911 & 0.955 & 0.609 & 0.598 & 0.824 & 0.922 \\
+\addlinespace
+\midrule
+\textbf{DEFault++} & Full & \textbf{0.930} & \textbf{0.925} & \textbf{0.994} & \textbf{0.997} & \textbf{0.836} & \textbf{0.825} & \textbf{0.970} & \textbf{0.987} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===== TABLE 3: GRAPH DIAGNOSIS =====
+\begin{table}[!htbp]
+\centering
+\caption{Graph-based diagnosis comparison: FL4Deep's Knowledge Graph vs.\ DEFault++'s Neural Diagnosis Graph.}
+\label{tab:baseline_graph}
+\small
+\begin{tabular}{l cc cc}
+\toprule
+& \multicolumn{2}{c}{\textsc{Encoder}} & \multicolumn{2}{c}{\textsc{Decoder}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Metric & FL4Deep KG & DEFault++ NDG & FL4Deep KG & DEFault++ NDG \\
+\midrule
+Top-1 accuracy & 0.714 & 0.973 & 0.621 & 0.921 \\
+Mean path depth & 1.000 & 11.600 & 1.000 & 9.500 \\
+Indicator alignment & 0.321 & 0.960 & 0.280 & 0.899 \\
+\bottomrule
+\end{tabular}
+\end{table}

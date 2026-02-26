@@ -1,0 +1,1288 @@
+{
+  "shap": {
+    "top30_core_features": [
+      [
+        "abs_ffn_delta_mean",
+        0.71497
+      ],
+      [
+        "abs_residual_cos_mean",
+        0.68272
+      ],
+      [
+        "abs_ln_mean_abs_mean",
+        0.46853
+      ],
+      [
+        "abs_ffn_var_ratio",
+        0.46337
+      ],
+      [
+        "abs_val_primary_metric",
+        0.4419
+      ],
+      [
+        "abs_repr_drift",
+        0.38318
+      ],
+      [
+        "abs_repr_cos",
+        0.37989
+      ],
+      [
+        "abs_ln_std_mean",
+        0.35294
+      ],
+      [
+        "abs_head_similarity_max",
+        0.3292
+      ],
+      [
+        "abs_head_similarity_mean",
+        0.31113
+      ],
+      [
+        "abs_peak_mem_alloc_mb",
+        0.30866
+      ],
+      [
+        "abs_step_time_mean",
+        0.27893
+      ],
+      [
+        "abs_h1_delta_norm_mean",
+        0.27532
+      ],
+      [
+        "abs_weight_std",
+        0.26007
+      ],
+      [
+        "abs_update_ratio_classifier",
+        0.25829
+      ],
+      [
+        "abs_val_edge_case_mse",
+        0.25367
+      ],
+      [
+        "abs_val_pos_inv",
+        0.25087
+      ],
+      [
+        "abs_ffn_out_skew",
+        0.23761
+      ],
+      [
+        "abs_ffn_var_ratio_mean",
+        0.23341
+      ],
+      [
+        "abs_activation_std",
+        0.21557
+      ],
+      [
+        "abs_pos_loss_startpos",
+        0.20939
+      ],
+      [
+        "abs_val_pos_acc_delta",
+        0.2005
+      ],
+      [
+        "abs_val_pos_margin_delta",
+        0.19988
+      ],
+      [
+        "abs_val_ece",
+        0.18824
+      ],
+      [
+        "abs_activation_mean",
+        0.17949
+      ],
+      [
+        "abs_weight_mean",
+        0.17913
+      ],
+      [
+        "abs_attn_entropy",
+        0.17396
+      ],
+      [
+        "abs_pos_acc_delta",
+        0.17218
+      ],
+      [
+        "abs_val_edge_case_mse_std",
+        0.16904
+      ],
+      [
+        "abs_peak_mem_reserved_mb",
+        0.1683
+      ]
+    ],
+    "stability_jaccard_top20": 0.8759,
+    "layer_pattern": {
+      "early_layers_frac": "0.5898",
+      "mid_layers_frac": "0.3185",
+      "late_layers_frac": "0.0917"
+    },
+    "per_fold_top5": [
+      [
+        [
+          "abs_residual_cos_mean",
+          0.7200424671173096
+        ],
+        [
+          "abs_ffn_delta_mean",
+          0.7000624537467957
+        ],
+        [
+          "abs_ffn_var_ratio",
+          0.4694979786872864
+        ],
+        [
+          "abs_ln_mean_abs_mean",
+          0.4647658169269562
+        ],
+        [
+          "abs_val_primary_metric",
+          0.43226274847984314
+        ]
+      ],
+      [
+        [
+          "abs_ffn_delta_mean",
+          0.6924790740013123
+        ],
+        [
+          "abs_residual_cos_mean",
+          0.6501166820526123
+        ],
+        [
+          "abs_ln_mean_abs_mean",
+          0.45963189005851746
+        ],
+        [
+          "abs_ffn_var_ratio",
+          0.45154523849487305
+        ],
+        [
+          "abs_val_primary_metric",
+          0.4420945942401886
+        ]
+      ],
+      [
+        [
+          "abs_ffn_delta_mean",
+          0.7523704767227173
+        ],
+        [
+          "abs_residual_cos_mean",
+          0.6780092716217041
+        ],
+        [
+          "abs_ln_mean_abs_mean",
+          0.4811956286430359
+        ],
+        [
+          "abs_ffn_var_ratio",
+          0.46907636523246765
+        ],
+        [
+          "abs_val_primary_metric",
+          0.4513471722602844
+        ]
+      ]
+    ],
+    "note": "mean(|SHAP|) aggregated to core features across time-window and per-layer expansions"
+  },
+  "counterfactuals": {
+    "total_attempted": 150,
+    "total_generated": 137,
+    "total_invalid": 0,
+    "top_changed_core_features": [
+      [
+        "abs_ffn_var_ratio",
+        42
+      ],
+      [
+        "abs_agg_head_similarity_max",
+        32
+      ],
+      [
+        "abs_val_margin_pos",
+        20
+      ],
+      [
+        "abs_ffn_var_ratio_mean",
+        18
+      ],
+      [
+        "abs_agg_attn_weight_magnitude",
+        17
+      ],
+      [
+        "abs_agg_head_similarity_mean",
+        16
+      ],
+      [
+        "abs_agg_attn_entropy_std",
+        14
+      ],
+      [
+        "abs_val_ece",
+        13
+      ],
+      [
+        "abs_h1_delta_norm_mean",
+        13
+      ],
+      [
+        "abs_f1_score",
+        12
+      ],
+      [
+        "abs_logit_margin_min",
+        12
+      ],
+      [
+        "abs_recall",
+        12
+      ],
+      [
+        "abs_precision",
+        9
+      ],
+      [
+        "abs_agg_attn_entropy_mean",
+        8
+      ],
+      [
+        "abs_val_logit_margin_var",
+        8
+      ]
+    ],
+    "per_fold": [
+      {
+        "n_attempted": 50,
+        "n_generated": 42,
+        "n_invalid": 0,
+        "n_mutable_features": 96,
+        "top_changed_core_features": [
+          [
+            "abs_agg_head_similarity_max",
+            14
+          ],
+          [
+            "abs_val_margin_pos",
+            11
+          ],
+          [
+            "abs_ffn_var_ratio",
+            8
+          ],
+          [
+            "abs_agg_attn_entropy_mean",
+            8
+          ],
+          [
+            "abs_logit_margin_var",
+            7
+          ],
+          [
+            "abs_f1_score",
+            6
+          ],
+          [
+            "abs_val_ece",
+            6
+          ],
+          [
+            "abs_val_precision",
+            6
+          ],
+          [
+            "abs_pos_acc_startpos",
+            5
+          ],
+          [
+            "abs_logit_kl_uniform",
+            5
+          ],
+          [
+            "abs_agg_pos_recv_early",
+            5
+          ],
+          [
+            "abs_activation_std",
+            5
+          ],
+          [
+            "abs_ln_mean_abs_mean",
+            5
+          ],
+          [
+            "abs_logit_margin_min",
+            5
+          ],
+          [
+            "abs_repr_drift",
+            5
+          ]
+        ]
+      },
+      {
+        "n_attempted": 50,
+        "n_generated": 49,
+        "n_invalid": 0,
+        "n_mutable_features": 96,
+        "top_changed_core_features": [
+          [
+            "abs_ffn_var_ratio",
+            16
+          ],
+          [
+            "abs_agg_attn_weight_magnitude",
+            10
+          ],
+          [
+            "abs_agg_head_similarity_max",
+            10
+          ],
+          [
+            "abs_val_margin_pos",
+            9
+          ],
+          [
+            "abs_agg_head_similarity_mean",
+            8
+          ],
+          [
+            "abs_val_logit_margin_var",
+            8
+          ],
+          [
+            "abs_ffn_var_ratio_mean",
+            8
+          ],
+          [
+            "abs_h1_delta_norm_mean",
+            7
+          ],
+          [
+            "abs_pos_loss_startpos",
+            7
+          ],
+          [
+            "abs_agg_attn_entropy_std",
+            7
+          ],
+          [
+            "abs_ffn_out_skew",
+            7
+          ],
+          [
+            "abs_val_ece",
+            7
+          ],
+          [
+            "abs_val_pos_acc_delta",
+            6
+          ],
+          [
+            "abs_val_pos_margin_delta",
+            6
+          ],
+          [
+            "abs_f1_score",
+            6
+          ]
+        ]
+      },
+      {
+        "n_attempted": 50,
+        "n_generated": 46,
+        "n_invalid": 0,
+        "n_mutable_features": 96,
+        "top_changed_core_features": [
+          [
+            "abs_ffn_var_ratio",
+            18
+          ],
+          [
+            "abs_recall",
+            12
+          ],
+          [
+            "abs_ffn_var_ratio_mean",
+            10
+          ],
+          [
+            "abs_precision",
+            9
+          ],
+          [
+            "abs_agg_attn_mass_leak",
+            8
+          ],
+          [
+            "abs_agg_head_similarity_mean",
+            8
+          ],
+          [
+            "abs_agg_head_similarity_max",
+            8
+          ],
+          [
+            "abs_agg_attn_mass_leak_max",
+            7
+          ],
+          [
+            "abs_presoftmax_var",
+            7
+          ],
+          [
+            "abs_ffn_delta_mean",
+            7
+          ],
+          [
+            "abs_logit_margin_min",
+            7
+          ],
+          [
+            "abs_agg_attn_weight_magnitude",
+            7
+          ],
+          [
+            "abs_val_recall",
+            7
+          ],
+          [
+            "abs_agg_attn_entropy_std",
+            7
+          ],
+          [
+            "abs_h1_delta_norm_mean",
+            6
+          ]
+        ]
+      }
+    ],
+    "examples": [
+      {
+        "true": "embedding",
+        "pred": "layernorm",
+        "cf_class": "embedding",
+        "margin": 0.1533,
+        "n_changed": 2,
+        "top_changes": {
+          "abs_val_primary_metric_final": 5.7213,
+          "abs_agg_presoftmax_skew_final": 3.3
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "kernel",
+        "cf_class": "embedding",
+        "margin": 0.2019,
+        "n_changed": 1,
+        "top_changes": {
+          "abs_pos_acc_startpos_final": 3.1671
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "kernel",
+        "cf_class": "embedding",
+        "margin": 0.7856,
+        "n_changed": 8,
+        "top_changes": {
+          "abs_logit_kl_uniform_final": 9.8706,
+          "abs_val_edge_case_mse_std_final": 7.1834,
+          "abs_activation_mean_final": 4.0467,
+          "abs_ffn_out_skew_mean_final": 4.002,
+          "abs_ffn_var_ratio_l0_final": 3.3612
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "ffn",
+        "cf_class": "embedding",
+        "margin": 0.3557,
+        "n_changed": 2,
+        "top_changes": {
+          "abs_agg_pos_recv_early_final": 4.2067,
+          "abs_ffn_var_ratio_l0_final": 1.1931
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "ffn",
+        "cf_class": "embedding",
+        "margin": 0.8397,
+        "n_changed": 42,
+        "top_changes": {
+          "abs_h1_delta_norm_mean_final": 13.2186,
+          "abs_logit_kl_uniform_final": 9.9141,
+          "abs_f1_score_final": 9.7915,
+          "abs_activation_std_final": 9.1167,
+          "abs_head_similarity_max_final": 8.2626
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "output",
+        "cf_class": "embedding",
+        "margin": 0.167,
+        "n_changed": 1,
+        "top_changes": {
+          "abs_ffn_var_ratio_l0_final": 3.0729
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "output",
+        "cf_class": "embedding",
+        "margin": 0.0561,
+        "n_changed": 2,
+        "top_changes": {
+          "abs_val_margin_pos_final": 4.8642,
+          "abs_agg_attn_score_var_final": 2.6345
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "embedding",
+        "cf_class": "ffn",
+        "margin": 0.0458,
+        "n_changed": 4,
+        "top_changes": {
+          "abs_pos_acc_delta_final": 8.3275,
+          "abs_ffn_var_ratio_l0_final": 4.7611,
+          "abs_val_f1_score_final": 1.5743,
+          "abs_head_similarity_mean_final": 0.8988
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "kernel",
+        "cf_class": "embedding",
+        "margin": 0.7016,
+        "n_changed": 7,
+        "top_changes": {
+          "abs_val_recall_final": 7.7114,
+          "abs_ffn_var_ratio_l0_final": 3.883,
+          "abs_pos_acc_startpos_final": 2.8105,
+          "abs_agg_head_similarity_std_final": 1.6968,
+          "abs_logit_margin_p25_final": 0.1885
+        }
+      },
+      {
+        "true": "embedding",
+        "pred": "kernel",
+        "cf_class": "embedding",
+        "margin": 0.0145,
+        "n_changed": 2,
+        "top_changes": {
+          "abs_logit_margin_p75_final": 7.5091,
+          "abs_val_margin_pos_final": 1.1161
+        }
+      }
+    ],
+    "note": "DiCE random method; infrastructure features immutable (emb_norm, grad_abs, grad_norm, grad_zero, peak_mem, step_time, update_active, update_ratio, weight_mean, weight_std); validity-checked (CF must achieve desired class)"
+  },
+  "rules": {
+    "mean_fidelity_to_xgb": 0.2597,
+    "std_fidelity": 0.0197,
+    "stable_rules_across_folds": [
+      [
+        "abs_residual_cos_mean > Q0 AND abs_peak_mem_alloc_mb > Q3 AND abs_h1_delta_norm_mean <= Q3 AND abs_head_similarity_mean <= Q2 => embedding",
+        2
+      ],
+      [
+        "abs_residual_cos_mean > Q0 AND abs_peak_mem_alloc_mb > Q3 AND abs_h1_delta_norm_mean <= Q3 AND abs_head_similarity_mean > Q2 => positional",
+        2
+      ],
+      [
+        "abs_residual_cos_mean > Q0 AND abs_peak_mem_alloc_mb <= Q3 AND abs_head_similarity_max <= Q0 AND abs_ln_mean_abs_mean <= Q0 => positional",
+        2
+      ],
+      [
+        "abs_residual_cos_mean > Q0 AND abs_peak_mem_alloc_mb <= Q3 AND abs_head_similarity_max <= Q0 AND abs_ln_mean_abs_mean > Q0 => kernel",
+        2
+      ]
+    ],
+    "per_fold": [
+      {
+        "fidelity_to_xgb": 0.2627,
+        "surrogate_accuracy": 0.2557,
+        "n_rules": 14,
+        "top_rules": [
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_ffn_var_ratio <= Q3"
+            ],
+            "class": "output",
+            "precision": 0.2049,
+            "coverage": 0.3704,
+            "n": 1176
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean <= Q3",
+              "abs_head_similarity_mean <= Q2"
+            ],
+            "class": "embedding",
+            "precision": 0.5641,
+            "coverage": 0.0983,
+            "n": 312
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean > Q3",
+              "abs_ffn_var_ratio > Q2"
+            ],
+            "class": "ffn",
+            "precision": 0.6377,
+            "coverage": 0.0435,
+            "n": 138
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_val_edge_case_mse > Q3"
+            ],
+            "class": "positional",
+            "precision": 0.6146,
+            "coverage": 0.0302,
+            "n": 96
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_ln_mean_abs_mean <= Q3",
+              "abs_residual_cos_mean <= Q0"
+            ],
+            "class": "masking",
+            "precision": 0.2976,
+            "coverage": 0.0529,
+            "n": 168
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_ln_mean_abs_mean > Q3",
+              "abs_agg_attn_mass_pad_max > Q1"
+            ],
+            "class": "residual",
+            "precision": 0.4778,
+            "coverage": 0.0283,
+            "n": 90
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_val_edge_case_mse <= Q3"
+            ],
+            "class": "kernel",
+            "precision": 0.1117,
+            "coverage": 0.1099,
+            "n": 349
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean <= Q3",
+              "abs_head_similarity_mean > Q2"
+            ],
+            "class": "positional",
+            "precision": 0.2263,
+            "coverage": 0.0431,
+            "n": 137
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_p50 <= Q3",
+              "abs_ln_mean_abs_mean > Q0"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0088,
+            "n": 28
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_ln_mean_abs_mean <= Q3",
+              "abs_residual_cos_mean > Q0"
+            ],
+            "class": "masking",
+            "precision": 0.0808,
+            "coverage": 0.0819,
+            "n": 260
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean > Q3",
+              "abs_ffn_var_ratio <= Q2"
+            ],
+            "class": "score",
+            "precision": 0.2656,
+            "coverage": 0.0202,
+            "n": 64
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_ffn_var_ratio > Q3"
+            ],
+            "class": "variant",
+            "precision": 0.0322,
+            "coverage": 0.098,
+            "n": 311
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_p50 <= Q3",
+              "abs_ln_mean_abs_mean <= Q0"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0025,
+            "n": 8
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_ln_mean_abs_mean > Q3",
+              "abs_agg_attn_mass_pad_max <= Q1"
+            ],
+            "class": "variant",
+            "precision": 0.0263,
+            "coverage": 0.012,
+            "n": 38
+          }
+        ],
+        "disc_note": "5 quantile bins, fit on training fold only"
+      },
+      {
+        "fidelity_to_xgb": 0.2822,
+        "surrogate_accuracy": 0.277,
+        "n_rules": 14,
+        "top_rules": [
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_ffn_var_ratio > Q0"
+            ],
+            "class": "output",
+            "precision": 0.187,
+            "coverage": 0.4275,
+            "n": 1321
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean <= Q3",
+              "abs_head_similarity_mean <= Q2"
+            ],
+            "class": "embedding",
+            "precision": 0.6559,
+            "coverage": 0.0799,
+            "n": 247
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_ln_mean_abs_mean <= Q0"
+            ],
+            "class": "positional",
+            "precision": 0.7677,
+            "coverage": 0.0502,
+            "n": 155
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean > Q3",
+              "abs_emb_norm_mean <= Q0"
+            ],
+            "class": "ffn",
+            "precision": 0.623,
+            "coverage": 0.0395,
+            "n": 122
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_pos_loss_startpos <= Q0",
+              "abs_ffn_var_ratio_mean > Q2"
+            ],
+            "class": "residual",
+            "precision": 0.6238,
+            "coverage": 0.0327,
+            "n": 101
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_pos_loss_startpos > Q0",
+              "abs_residual_cos_mean <= Q0"
+            ],
+            "class": "masking",
+            "precision": 0.3333,
+            "coverage": 0.0379,
+            "n": 117
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_p25 <= Q3",
+              "abs_ln_mean_abs_mean > Q1"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0094,
+            "n": 29
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_ln_mean_abs_mean > Q0"
+            ],
+            "class": "kernel",
+            "precision": 0.133,
+            "coverage": 0.0706,
+            "n": 218
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_pos_loss_startpos > Q0",
+              "abs_residual_cos_mean > Q0"
+            ],
+            "class": "masking",
+            "precision": 0.0708,
+            "coverage": 0.1052,
+            "n": 325
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean <= Q3",
+              "abs_head_similarity_mean > Q2"
+            ],
+            "class": "positional",
+            "precision": 0.2143,
+            "coverage": 0.0272,
+            "n": 84
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_h1_delta_norm_mean > Q3",
+              "abs_emb_norm_mean > Q0"
+            ],
+            "class": "score",
+            "precision": 0.2642,
+            "coverage": 0.0172,
+            "n": 53
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_pos_loss_startpos <= Q0",
+              "abs_ffn_var_ratio_mean <= Q2"
+            ],
+            "class": "masking",
+            "precision": 0.1129,
+            "coverage": 0.0401,
+            "n": 124
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_ffn_var_ratio <= Q0"
+            ],
+            "class": "variant",
+            "precision": 0.0604,
+            "coverage": 0.0589,
+            "n": 182
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_p25 <= Q3",
+              "abs_ln_mean_abs_mean <= Q1"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0032,
+            "n": 10
+          }
+        ],
+        "disc_note": "5 quantile bins, fit on training fold only"
+      },
+      {
+        "fidelity_to_xgb": 0.2342,
+        "surrogate_accuracy": 0.2335,
+        "n_rules": 15,
+        "top_rules": [
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_repr_drift > Q0"
+            ],
+            "class": "output",
+            "precision": 0.1464,
+            "coverage": 0.4367,
+            "n": 1393
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_ffn_var_ratio > Q0",
+              "abs_head_similarity_mean <= Q2"
+            ],
+            "class": "embedding",
+            "precision": 0.6047,
+            "coverage": 0.0944,
+            "n": 301
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_ln_mean_abs_mean <= Q0"
+            ],
+            "class": "positional",
+            "precision": 0.7358,
+            "coverage": 0.0332,
+            "n": 106
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_agg_attn_mass_leak_max <= Q3",
+              "abs_agg_attn_mass_pad_max > Q1"
+            ],
+            "class": "residual",
+            "precision": 0.4336,
+            "coverage": 0.0448,
+            "n": 143
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_ffn_var_ratio <= Q0",
+              "abs_update_ratio_layernorm > Q2"
+            ],
+            "class": "ffn",
+            "precision": 0.6622,
+            "coverage": 0.0232,
+            "n": 74
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_agg_attn_mass_leak_max > Q3",
+              "abs_agg_pos_recv_mid <= Q0"
+            ],
+            "class": "masking",
+            "precision": 0.3953,
+            "coverage": 0.027,
+            "n": 86
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max <= Q0",
+              "abs_ln_mean_abs_mean > Q0"
+            ],
+            "class": "kernel",
+            "precision": 0.1141,
+            "coverage": 0.0824,
+            "n": 263
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_mean <= Q3",
+              "abs_ln_mean_abs_mean > Q1"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0088,
+            "n": 28
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_agg_attn_mass_leak_max <= Q3",
+              "abs_agg_attn_mass_pad_max <= Q1"
+            ],
+            "class": "masking",
+            "precision": 0.0995,
+            "coverage": 0.0661,
+            "n": 211
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_ffn_var_ratio > Q0",
+              "abs_head_similarity_mean > Q2"
+            ],
+            "class": "positional",
+            "precision": 0.1802,
+            "coverage": 0.0348,
+            "n": 111
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean > Q0",
+              "abs_agg_attn_mass_leak_max > Q3",
+              "abs_agg_pos_recv_mid > Q0"
+            ],
+            "class": "masking",
+            "precision": 0.097,
+            "coverage": 0.042,
+            "n": 134
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb <= Q3",
+              "abs_head_similarity_max > Q0",
+              "abs_repr_drift <= Q0"
+            ],
+            "class": "variant",
+            "precision": 0.0436,
+            "coverage": 0.0862,
+            "n": 275
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_mean <= Q3",
+              "abs_ln_mean_abs_mean <= Q1"
+            ],
+            "class": "layernorm",
+            "precision": 1.0,
+            "coverage": 0.0016,
+            "n": 5
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean > Q0",
+              "abs_peak_mem_alloc_mb > Q3",
+              "abs_ffn_var_ratio <= Q0",
+              "abs_update_ratio_layernorm <= Q2"
+            ],
+            "class": "kernel",
+            "precision": 0.0714,
+            "coverage": 0.0176,
+            "n": 56
+          },
+          {
+            "conditions": [
+              "abs_residual_cos_mean <= Q0",
+              "abs_ffn_active_dim_frac_mean <= Q0",
+              "abs_logit_margin_mean > Q3"
+            ],
+            "class": "variant",
+            "precision": 0.75,
+            "coverage": 0.0013,
+            "n": 4
+          }
+        ],
+        "disc_note": "5 quantile bins, fit on training fold only"
+      }
+    ],
+    "sample_tree": "|--- abs_residual_cos_mean <= 0.50\n|   |--- abs_ffn_active_dim_frac_mean <= 0.50\n|   |   |--- abs_logit_margin_p50 <= 3.50\n|   |   |   |--- abs_ln_mean_abs_mean <= 0.50\n|   |   |   |   |--- class: 3\n|   |   |   |--- abs_ln_mean_abs_mean >  0.50\n|   |   |   |   |--- class: 3\n|   |   |--- abs_logit_margin_p50 >  3.50\n|   |   |   |--- class: 10\n|   |--- abs_ffn_active_dim_frac_mean >  0.50\n|   |   |--- abs_ln_mean_abs_mean <= 3.50\n|   |   |   |--- abs_residual_cos_mean <= 0.50\n|   |   |   |   |--- class: 4\n|   |   |   |--- abs_residual_cos_mean >  0.50\n|   |   |   |   |--- class: 4\n|   |   |--- abs_ln_mean_abs_mean >  3.50\n|   |   |   |--- abs_agg_attn_mass_pad_max <= 1.50\n|   |   |   |   |--- class: 10\n|   |   |   |--- abs_agg_attn_mass_pad_max >  1.50\n|   |   |   |   |--- class: 8\n|--- abs_residual_cos_mean >  0.50\n|   |--- abs_peak_mem_alloc_mb <= 3.50\n|   |   |--- abs_head_similarity_max <= 0.50\n|   |   |   |--- abs_val_edge_case_mse <= 3.50\n|   |   |   |   |--- class: 2\n|   |   |   |--- abs_val_edge_case_mse >  3.50\n|   |   |   |   |--- class: 6\n|   |   |--- abs_head_similarity_max >  0.50\n|   |   |   |--- abs_ffn_var_ratio <= 3.50\n|   |   |   |   |--- class: 5\n|   |   |   |--- abs_ffn_var_ratio >  3.50\n|   |   |   |   |--- class: 10\n|   |--- abs_peak_mem_alloc_mb >  3.50\n|   |   |--- abs_h1_delta_norm_mean <= 3.50\n|   |   |   |--- abs_head_similarity_mean <= 2.50\n|   |   |   |   |--- class: 0\n|   |   |   |--- abs_head_similarity_mean >  2.50\n|   |   |   |   |--- class: 6\n|   |   |--- abs_h1_delta_norm_mean >  3.50\n|   |   |   |--- abs_ffn_var_ratio <= 2.50\n|   |   |   |   |--- class: 9\n|   |   |   |--- abs_ffn_var_ratio >  2.50\n|   |   |   |   |--- class: 1\n",
+    "note": "5 quantile bins fit on training fold only; surrogate DecisionTree(depth=4); precision and coverage evaluated on held-out test fold"
+  },
+  "meta": {
+    "n_samples": 9455,
+    "n_features": 544,
+    "n_core_features": 115,
+    "n_dice_representatives": 114,
+    "shap_max_samples": 500,
+    "label_names": [
+      "embedding",
+      "ffn",
+      "kernel",
+      "layernorm",
+      "masking",
+      "output",
+      "positional",
+      "qkv",
+      "residual",
+      "score",
+      "variant"
+    ],
+    "binary": false,
+    "has_nan": false,
+    "n_folds": 3,
+    "cv_method": "StratifiedGroupKFold",
+    "fold_distributions": [
+      {
+        "fold": 0,
+        "train": {
+          "embedding": 577,
+          "ffn": 967,
+          "kernel": 314,
+          "layernorm": 681,
+          "masking": 232,
+          "output": 645,
+          "positional": 601,
+          "qkv": 819,
+          "residual": 436,
+          "score": 930,
+          "variant": 78
+        },
+        "test": {
+          "embedding": 303,
+          "ffn": 473,
+          "kernel": 166,
+          "layernorm": 369,
+          "masking": 118,
+          "output": 315,
+          "positional": 299,
+          "qkv": 416,
+          "residual": 214,
+          "score": 460,
+          "variant": 42
+        }
+      },
+      {
+        "fold": 1,
+        "train": {
+          "embedding": 607,
+          "ffn": 1000,
+          "kernel": 326,
+          "layernorm": 704,
+          "masking": 233,
+          "output": 645,
+          "positional": 593,
+          "qkv": 826,
+          "residual": 424,
+          "score": 923,
+          "variant": 84
+        },
+        "test": {
+          "embedding": 273,
+          "ffn": 440,
+          "kernel": 154,
+          "layernorm": 346,
+          "masking": 117,
+          "output": 315,
+          "positional": 307,
+          "qkv": 409,
+          "residual": 226,
+          "score": 467,
+          "variant": 36
+        }
+      },
+      {
+        "fold": 2,
+        "train": {
+          "embedding": 576,
+          "ffn": 913,
+          "kernel": 320,
+          "layernorm": 715,
+          "masking": 235,
+          "output": 630,
+          "positional": 606,
+          "qkv": 825,
+          "residual": 440,
+          "score": 927,
+          "variant": 78
+        },
+        "test": {
+          "embedding": 304,
+          "ffn": 527,
+          "kernel": 160,
+          "layernorm": 335,
+          "masking": 115,
+          "output": 330,
+          "positional": 294,
+          "qkv": 410,
+          "residual": 210,
+          "score": 463,
+          "variant": 42
+        }
+      }
+    ],
+    "xgb_params": {
+      "tree_method": "hist",
+      "random_state": 42,
+      "n_jobs": 16,
+      "n_estimators": 2000,
+      "verbosity": 0,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "max_depth": 3,
+      "min_child_weight": 5,
+      "learning_rate": 0.1,
+      "objective": "multi:softprob",
+      "eval_metric": "mlogloss"
+    }
+  }
+}

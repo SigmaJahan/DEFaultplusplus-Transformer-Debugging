@@ -1,0 +1,2732 @@
+[
+ {
+  "index": 0,
+  "name": "abs_accuracy_early_mean",
+  "tier": "P"
+ },
+ {
+  "index": 1,
+  "name": "abs_accuracy_early_slope",
+  "tier": "P"
+ },
+ {
+  "index": 2,
+  "name": "abs_accuracy_final",
+  "tier": "P"
+ },
+ {
+  "index": 3,
+  "name": "abs_accuracy_mid_mean",
+  "tier": "P"
+ },
+ {
+  "index": 4,
+  "name": "abs_accuracy_mid_slope",
+  "tier": "P"
+ },
+ {
+  "index": 5,
+  "name": "abs_activation_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 6,
+  "name": "abs_activation_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 7,
+  "name": "abs_activation_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 8,
+  "name": "abs_activation_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 9,
+  "name": "abs_activation_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 10,
+  "name": "abs_activation_std_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 11,
+  "name": "abs_activation_std_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 12,
+  "name": "abs_activation_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 13,
+  "name": "abs_activation_std_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 14,
+  "name": "abs_activation_std_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 15,
+  "name": "abs_agg_attn_cross_example_leak_final",
+  "tier": "I"
+ },
+ {
+  "index": 16,
+  "name": "abs_agg_attn_entropy_final",
+  "tier": "I"
+ },
+ {
+  "index": 17,
+  "name": "abs_agg_attn_entropy_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 18,
+  "name": "abs_agg_attn_entropy_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 19,
+  "name": "abs_agg_attn_entropy_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 20,
+  "name": "abs_agg_attn_mass_leak_final",
+  "tier": "I"
+ },
+ {
+  "index": 21,
+  "name": "abs_agg_attn_mass_leak_max_final",
+  "tier": "I"
+ },
+ {
+  "index": 22,
+  "name": "abs_agg_attn_mass_pad_max_final",
+  "tier": "I"
+ },
+ {
+  "index": 23,
+  "name": "abs_agg_attn_mass_pad_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 24,
+  "name": "abs_agg_attn_max_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 25,
+  "name": "abs_agg_attn_max_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 26,
+  "name": "abs_agg_attn_score_skew_final",
+  "tier": "I"
+ },
+ {
+  "index": 27,
+  "name": "abs_agg_attn_score_var_final",
+  "tier": "I"
+ },
+ {
+  "index": 28,
+  "name": "abs_agg_attn_sparsity_final",
+  "tier": "I"
+ },
+ {
+  "index": 29,
+  "name": "abs_agg_attn_weight_magnitude_final",
+  "tier": "I"
+ },
+ {
+  "index": 30,
+  "name": "abs_agg_head_similarity_max_final",
+  "tier": "I"
+ },
+ {
+  "index": 31,
+  "name": "abs_agg_head_similarity_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 32,
+  "name": "abs_agg_head_similarity_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 33,
+  "name": "abs_agg_pos_recv_early_final",
+  "tier": "I"
+ },
+ {
+  "index": 34,
+  "name": "abs_agg_pos_recv_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 35,
+  "name": "abs_agg_pos_recv_mid_final",
+  "tier": "I"
+ },
+ {
+  "index": 36,
+  "name": "abs_agg_pos_recv_mid_over_early_final",
+  "tier": "I"
+ },
+ {
+  "index": 37,
+  "name": "abs_agg_pos_recv_skew_final",
+  "tier": "I"
+ },
+ {
+  "index": 38,
+  "name": "abs_agg_pos_recv_var_final",
+  "tier": "I"
+ },
+ {
+  "index": 39,
+  "name": "abs_agg_presoftmax_kurt_final",
+  "tier": "I"
+ },
+ {
+  "index": 40,
+  "name": "abs_agg_presoftmax_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 41,
+  "name": "abs_agg_presoftmax_skew_final",
+  "tier": "I"
+ },
+ {
+  "index": 42,
+  "name": "abs_agg_presoftmax_var_final",
+  "tier": "I"
+ },
+ {
+  "index": 43,
+  "name": "abs_attn_entropy_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 44,
+  "name": "abs_attn_entropy_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 45,
+  "name": "abs_attn_entropy_final",
+  "tier": "I"
+ },
+ {
+  "index": 46,
+  "name": "abs_cross_example_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 47,
+  "name": "abs_ece_early_mean",
+  "tier": "P"
+ },
+ {
+  "index": 48,
+  "name": "abs_ece_early_slope",
+  "tier": "P"
+ },
+ {
+  "index": 49,
+  "name": "abs_ece_final",
+  "tier": "P"
+ },
+ {
+  "index": 50,
+  "name": "abs_ece_mid_mean",
+  "tier": "P"
+ },
+ {
+  "index": 51,
+  "name": "abs_ece_mid_slope",
+  "tier": "P"
+ },
+ {
+  "index": 52,
+  "name": "abs_emb_norm_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 53,
+  "name": "abs_emb_norm_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 54,
+  "name": "abs_emb_norm_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 55,
+  "name": "abs_emb_norm_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 56,
+  "name": "abs_emb_norm_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 57,
+  "name": "abs_emb_norm_std_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 58,
+  "name": "abs_emb_norm_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 59,
+  "name": "abs_emb_norm_std_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 60,
+  "name": "abs_f1_score_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 61,
+  "name": "abs_f1_score_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 62,
+  "name": "abs_f1_score_final",
+  "tier": "I"
+ },
+ {
+  "index": 63,
+  "name": "abs_f1_score_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 64,
+  "name": "abs_f1_score_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 65,
+  "name": "abs_ffn_active_dim_frac_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 66,
+  "name": "abs_ffn_delta_l0_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 67,
+  "name": "abs_ffn_delta_l10_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 68,
+  "name": "abs_ffn_delta_l11_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 69,
+  "name": "abs_ffn_delta_l1_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 70,
+  "name": "abs_ffn_delta_l2_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 71,
+  "name": "abs_ffn_delta_l3_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 72,
+  "name": "abs_ffn_delta_l4_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 73,
+  "name": "abs_ffn_delta_l5_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 74,
+  "name": "abs_ffn_delta_l6_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 75,
+  "name": "abs_ffn_delta_l7_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 76,
+  "name": "abs_ffn_delta_l8_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 77,
+  "name": "abs_ffn_delta_l9_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 78,
+  "name": "abs_ffn_delta_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 79,
+  "name": "abs_ffn_delta_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 80,
+  "name": "abs_ffn_delta_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 81,
+  "name": "abs_ffn_delta_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 82,
+  "name": "abs_ffn_delta_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 83,
+  "name": "abs_ffn_out_skew_l0_final",
+  "tier": "I"
+ },
+ {
+  "index": 84,
+  "name": "abs_ffn_out_skew_l10_final",
+  "tier": "I"
+ },
+ {
+  "index": 85,
+  "name": "abs_ffn_out_skew_l11_final",
+  "tier": "I"
+ },
+ {
+  "index": 86,
+  "name": "abs_ffn_out_skew_l1_final",
+  "tier": "I"
+ },
+ {
+  "index": 87,
+  "name": "abs_ffn_out_skew_l2_final",
+  "tier": "I"
+ },
+ {
+  "index": 88,
+  "name": "abs_ffn_out_skew_l3_final",
+  "tier": "I"
+ },
+ {
+  "index": 89,
+  "name": "abs_ffn_out_skew_l4_final",
+  "tier": "I"
+ },
+ {
+  "index": 90,
+  "name": "abs_ffn_out_skew_l5_final",
+  "tier": "I"
+ },
+ {
+  "index": 91,
+  "name": "abs_ffn_out_skew_l6_final",
+  "tier": "I"
+ },
+ {
+  "index": 92,
+  "name": "abs_ffn_out_skew_l7_final",
+  "tier": "I"
+ },
+ {
+  "index": 93,
+  "name": "abs_ffn_out_skew_l8_final",
+  "tier": "I"
+ },
+ {
+  "index": 94,
+  "name": "abs_ffn_out_skew_l9_final",
+  "tier": "I"
+ },
+ {
+  "index": 95,
+  "name": "abs_ffn_out_skew_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 96,
+  "name": "abs_ffn_out_skew_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 97,
+  "name": "abs_ffn_out_skew_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 98,
+  "name": "abs_ffn_out_skew_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 99,
+  "name": "abs_ffn_out_skew_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 100,
+  "name": "abs_ffn_var_ratio_l0_final",
+  "tier": "I"
+ },
+ {
+  "index": 101,
+  "name": "abs_ffn_var_ratio_l10_final",
+  "tier": "I"
+ },
+ {
+  "index": 102,
+  "name": "abs_ffn_var_ratio_l11_final",
+  "tier": "I"
+ },
+ {
+  "index": 103,
+  "name": "abs_ffn_var_ratio_l1_final",
+  "tier": "I"
+ },
+ {
+  "index": 104,
+  "name": "abs_ffn_var_ratio_l2_final",
+  "tier": "I"
+ },
+ {
+  "index": 105,
+  "name": "abs_ffn_var_ratio_l3_final",
+  "tier": "I"
+ },
+ {
+  "index": 106,
+  "name": "abs_ffn_var_ratio_l4_final",
+  "tier": "I"
+ },
+ {
+  "index": 107,
+  "name": "abs_ffn_var_ratio_l5_final",
+  "tier": "I"
+ },
+ {
+  "index": 108,
+  "name": "abs_ffn_var_ratio_l6_final",
+  "tier": "I"
+ },
+ {
+  "index": 109,
+  "name": "abs_ffn_var_ratio_l7_final",
+  "tier": "I"
+ },
+ {
+  "index": 110,
+  "name": "abs_ffn_var_ratio_l8_final",
+  "tier": "I"
+ },
+ {
+  "index": 111,
+  "name": "abs_ffn_var_ratio_l9_final",
+  "tier": "I"
+ },
+ {
+  "index": 112,
+  "name": "abs_ffn_var_ratio_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 113,
+  "name": "abs_ffn_var_ratio_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 114,
+  "name": "abs_ffn_var_ratio_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 115,
+  "name": "abs_ffn_var_ratio_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 116,
+  "name": "abs_ffn_var_ratio_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 117,
+  "name": "abs_h1_delta_norm_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 118,
+  "name": "abs_h1_delta_norm_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 119,
+  "name": "abs_h1_delta_norm_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 120,
+  "name": "abs_h1_delta_norm_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 121,
+  "name": "abs_h1_delta_norm_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 122,
+  "name": "abs_head_similarity_max_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 123,
+  "name": "abs_head_similarity_max_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 124,
+  "name": "abs_head_similarity_max_final",
+  "tier": "I"
+ },
+ {
+  "index": 125,
+  "name": "abs_head_similarity_max_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 126,
+  "name": "abs_head_similarity_max_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 127,
+  "name": "abs_head_similarity_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 128,
+  "name": "abs_head_similarity_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 129,
+  "name": "abs_head_similarity_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 130,
+  "name": "abs_head_similarity_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 131,
+  "name": "abs_head_similarity_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 132,
+  "name": "abs_ln_mean_abs_l0_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 133,
+  "name": "abs_ln_mean_abs_l10_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 134,
+  "name": "abs_ln_mean_abs_l11_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 135,
+  "name": "abs_ln_mean_abs_l1_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 136,
+  "name": "abs_ln_mean_abs_l2_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 137,
+  "name": "abs_ln_mean_abs_l3_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 138,
+  "name": "abs_ln_mean_abs_l4_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 139,
+  "name": "abs_ln_mean_abs_l5_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 140,
+  "name": "abs_ln_mean_abs_l6_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 141,
+  "name": "abs_ln_mean_abs_l7_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 142,
+  "name": "abs_ln_mean_abs_l8_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 143,
+  "name": "abs_ln_mean_abs_l9_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 144,
+  "name": "abs_ln_mean_abs_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 145,
+  "name": "abs_ln_mean_abs_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 146,
+  "name": "abs_ln_mean_abs_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 147,
+  "name": "abs_ln_mean_abs_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 148,
+  "name": "abs_ln_mean_abs_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 149,
+  "name": "abs_ln_std_l0_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 150,
+  "name": "abs_ln_std_l10_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 151,
+  "name": "abs_ln_std_l11_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 152,
+  "name": "abs_ln_std_l1_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 153,
+  "name": "abs_ln_std_l2_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 154,
+  "name": "abs_ln_std_l3_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 155,
+  "name": "abs_ln_std_l4_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 156,
+  "name": "abs_ln_std_l5_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 157,
+  "name": "abs_ln_std_l6_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 158,
+  "name": "abs_ln_std_l7_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 159,
+  "name": "abs_ln_std_l8_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 160,
+  "name": "abs_ln_std_l9_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 161,
+  "name": "abs_ln_std_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 162,
+  "name": "abs_ln_std_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 163,
+  "name": "abs_ln_std_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 164,
+  "name": "abs_ln_std_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 165,
+  "name": "abs_ln_std_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 166,
+  "name": "abs_logit_conf_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 167,
+  "name": "abs_logit_conf_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 168,
+  "name": "abs_logit_conf_final",
+  "tier": "D"
+ },
+ {
+  "index": 169,
+  "name": "abs_logit_conf_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 170,
+  "name": "abs_logit_conf_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 171,
+  "name": "abs_logit_entropy_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 172,
+  "name": "abs_logit_entropy_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 173,
+  "name": "abs_logit_entropy_final",
+  "tier": "D"
+ },
+ {
+  "index": 174,
+  "name": "abs_logit_entropy_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 175,
+  "name": "abs_logit_entropy_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 176,
+  "name": "abs_logit_kl_uniform_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 177,
+  "name": "abs_logit_kl_uniform_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 178,
+  "name": "abs_logit_kl_uniform_final",
+  "tier": "D"
+ },
+ {
+  "index": 179,
+  "name": "abs_logit_kl_uniform_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 180,
+  "name": "abs_logit_kl_uniform_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 181,
+  "name": "abs_logit_margin_mean_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 182,
+  "name": "abs_logit_margin_mean_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 183,
+  "name": "abs_logit_margin_mean_final",
+  "tier": "D"
+ },
+ {
+  "index": 184,
+  "name": "abs_logit_margin_mean_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 185,
+  "name": "abs_logit_margin_mean_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 186,
+  "name": "abs_logit_margin_min_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 187,
+  "name": "abs_logit_margin_min_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 188,
+  "name": "abs_logit_margin_min_final",
+  "tier": "D"
+ },
+ {
+  "index": 189,
+  "name": "abs_logit_margin_min_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 190,
+  "name": "abs_logit_margin_min_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 191,
+  "name": "abs_logit_margin_p25_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 192,
+  "name": "abs_logit_margin_p25_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 193,
+  "name": "abs_logit_margin_p25_final",
+  "tier": "D"
+ },
+ {
+  "index": 194,
+  "name": "abs_logit_margin_p25_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 195,
+  "name": "abs_logit_margin_p25_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 196,
+  "name": "abs_logit_margin_p50_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 197,
+  "name": "abs_logit_margin_p50_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 198,
+  "name": "abs_logit_margin_p50_final",
+  "tier": "D"
+ },
+ {
+  "index": 199,
+  "name": "abs_logit_margin_p50_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 200,
+  "name": "abs_logit_margin_p50_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 201,
+  "name": "abs_logit_margin_p75_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 202,
+  "name": "abs_logit_margin_p75_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 203,
+  "name": "abs_logit_margin_p75_final",
+  "tier": "D"
+ },
+ {
+  "index": 204,
+  "name": "abs_logit_margin_p75_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 205,
+  "name": "abs_logit_margin_p75_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 206,
+  "name": "abs_logit_margin_var_early_mean",
+  "tier": "D"
+ },
+ {
+  "index": 207,
+  "name": "abs_logit_margin_var_early_slope",
+  "tier": "D"
+ },
+ {
+  "index": 208,
+  "name": "abs_logit_margin_var_final",
+  "tier": "D"
+ },
+ {
+  "index": 209,
+  "name": "abs_logit_margin_var_mid_mean",
+  "tier": "D"
+ },
+ {
+  "index": 210,
+  "name": "abs_logit_margin_var_mid_slope",
+  "tier": "D"
+ },
+ {
+  "index": 211,
+  "name": "abs_loss_early_mean",
+  "tier": "P"
+ },
+ {
+  "index": 212,
+  "name": "abs_loss_early_slope",
+  "tier": "P"
+ },
+ {
+  "index": 213,
+  "name": "abs_loss_final",
+  "tier": "P"
+ },
+ {
+  "index": 214,
+  "name": "abs_loss_mid_mean",
+  "tier": "P"
+ },
+ {
+  "index": 215,
+  "name": "abs_loss_mid_slope",
+  "tier": "P"
+ },
+ {
+  "index": 216,
+  "name": "abs_mass_leak_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 217,
+  "name": "abs_mass_leak_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 218,
+  "name": "abs_mass_leak_final",
+  "tier": "I"
+ },
+ {
+  "index": 219,
+  "name": "abs_mass_leak_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 220,
+  "name": "abs_mass_leak_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 221,
+  "name": "abs_mass_pad_final",
+  "tier": "I"
+ },
+ {
+  "index": 222,
+  "name": "abs_peak_mem_alloc_mb",
+  "tier": "I"
+ },
+ {
+  "index": 223,
+  "name": "abs_peak_mem_reserved_mb",
+  "tier": "I"
+ },
+ {
+  "index": 224,
+  "name": "abs_pos_acc_delta_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 225,
+  "name": "abs_pos_acc_delta_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 226,
+  "name": "abs_pos_acc_delta_final",
+  "tier": "I"
+ },
+ {
+  "index": 227,
+  "name": "abs_pos_acc_delta_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 228,
+  "name": "abs_pos_acc_delta_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 229,
+  "name": "abs_pos_acc_startpos_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 230,
+  "name": "abs_pos_acc_startpos_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 231,
+  "name": "abs_pos_acc_startpos_final",
+  "tier": "I"
+ },
+ {
+  "index": 232,
+  "name": "abs_pos_acc_startpos_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 233,
+  "name": "abs_pos_acc_startpos_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 234,
+  "name": "abs_pos_loss_startpos_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 235,
+  "name": "abs_pos_loss_startpos_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 236,
+  "name": "abs_pos_loss_startpos_final",
+  "tier": "I"
+ },
+ {
+  "index": 237,
+  "name": "abs_pos_loss_startpos_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 238,
+  "name": "abs_pos_loss_startpos_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 239,
+  "name": "abs_pos_margin_delta_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 240,
+  "name": "abs_pos_margin_delta_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 241,
+  "name": "abs_pos_margin_delta_final",
+  "tier": "I"
+ },
+ {
+  "index": 242,
+  "name": "abs_pos_margin_delta_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 243,
+  "name": "abs_pos_margin_delta_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 244,
+  "name": "abs_pos_margin_startpos_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 245,
+  "name": "abs_pos_margin_startpos_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 246,
+  "name": "abs_pos_margin_startpos_final",
+  "tier": "I"
+ },
+ {
+  "index": 247,
+  "name": "abs_pos_margin_startpos_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 248,
+  "name": "abs_pos_margin_startpos_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 249,
+  "name": "abs_precision_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 250,
+  "name": "abs_precision_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 251,
+  "name": "abs_precision_final",
+  "tier": "I"
+ },
+ {
+  "index": 252,
+  "name": "abs_precision_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 253,
+  "name": "abs_precision_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 254,
+  "name": "abs_presoftmax_kurt_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 255,
+  "name": "abs_presoftmax_kurt_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 256,
+  "name": "abs_presoftmax_kurt_final",
+  "tier": "I"
+ },
+ {
+  "index": 257,
+  "name": "abs_presoftmax_kurt_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 258,
+  "name": "abs_presoftmax_kurt_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 259,
+  "name": "abs_presoftmax_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 260,
+  "name": "abs_presoftmax_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 261,
+  "name": "abs_presoftmax_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 262,
+  "name": "abs_presoftmax_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 263,
+  "name": "abs_presoftmax_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 264,
+  "name": "abs_presoftmax_skew_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 265,
+  "name": "abs_presoftmax_skew_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 266,
+  "name": "abs_presoftmax_skew_final",
+  "tier": "I"
+ },
+ {
+  "index": 267,
+  "name": "abs_presoftmax_skew_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 268,
+  "name": "abs_presoftmax_skew_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 269,
+  "name": "abs_presoftmax_var_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 270,
+  "name": "abs_presoftmax_var_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 271,
+  "name": "abs_presoftmax_var_final",
+  "tier": "I"
+ },
+ {
+  "index": 272,
+  "name": "abs_presoftmax_var_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 273,
+  "name": "abs_presoftmax_var_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 274,
+  "name": "abs_recall_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 275,
+  "name": "abs_recall_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 276,
+  "name": "abs_recall_final",
+  "tier": "I"
+ },
+ {
+  "index": 277,
+  "name": "abs_recall_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 278,
+  "name": "abs_recall_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 279,
+  "name": "abs_repr_l0_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 280,
+  "name": "abs_repr_l0_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 281,
+  "name": "abs_repr_l0_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 282,
+  "name": "abs_repr_l0_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 283,
+  "name": "abs_repr_l0_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 284,
+  "name": "abs_repr_l0_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 285,
+  "name": "abs_repr_l0_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 286,
+  "name": "abs_repr_l0_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 287,
+  "name": "abs_repr_l10_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 288,
+  "name": "abs_repr_l11_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 289,
+  "name": "abs_repr_l1_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 290,
+  "name": "abs_repr_l1_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 291,
+  "name": "abs_repr_l1_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 292,
+  "name": "abs_repr_l1_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 293,
+  "name": "abs_repr_l1_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 294,
+  "name": "abs_repr_l1_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 295,
+  "name": "abs_repr_l1_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 296,
+  "name": "abs_repr_l1_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 297,
+  "name": "abs_repr_l2_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 298,
+  "name": "abs_repr_l2_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 299,
+  "name": "abs_repr_l2_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 300,
+  "name": "abs_repr_l2_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 301,
+  "name": "abs_repr_l2_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 302,
+  "name": "abs_repr_l2_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 303,
+  "name": "abs_repr_l2_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 304,
+  "name": "abs_repr_l2_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 305,
+  "name": "abs_repr_l3_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 306,
+  "name": "abs_repr_l3_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 307,
+  "name": "abs_repr_l3_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 308,
+  "name": "abs_repr_l3_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 309,
+  "name": "abs_repr_l3_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 310,
+  "name": "abs_repr_l3_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 311,
+  "name": "abs_repr_l3_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 312,
+  "name": "abs_repr_l3_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 313,
+  "name": "abs_repr_l4_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 314,
+  "name": "abs_repr_l4_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 315,
+  "name": "abs_repr_l4_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 316,
+  "name": "abs_repr_l4_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 317,
+  "name": "abs_repr_l4_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 318,
+  "name": "abs_repr_l4_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 319,
+  "name": "abs_repr_l4_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 320,
+  "name": "abs_repr_l4_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 321,
+  "name": "abs_repr_l5_cos_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 322,
+  "name": "abs_repr_l5_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 323,
+  "name": "abs_repr_l5_cos_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 324,
+  "name": "abs_repr_l5_cos_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 325,
+  "name": "abs_repr_l5_drift_1_10",
+  "tier": "I"
+ },
+ {
+  "index": 326,
+  "name": "abs_repr_l5_drift_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 327,
+  "name": "abs_repr_l5_drift_4_7",
+  "tier": "I"
+ },
+ {
+  "index": 328,
+  "name": "abs_repr_l5_drift_7_10",
+  "tier": "I"
+ },
+ {
+  "index": 329,
+  "name": "abs_repr_l6_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 330,
+  "name": "abs_repr_l7_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 331,
+  "name": "abs_repr_l8_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 332,
+  "name": "abs_repr_l9_cos_1_4",
+  "tier": "I"
+ },
+ {
+  "index": 333,
+  "name": "abs_residual_cos_l0_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 334,
+  "name": "abs_residual_cos_l10_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 335,
+  "name": "abs_residual_cos_l11_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 336,
+  "name": "abs_residual_cos_l1_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 337,
+  "name": "abs_residual_cos_l2_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 338,
+  "name": "abs_residual_cos_l3_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 339,
+  "name": "abs_residual_cos_l4_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 340,
+  "name": "abs_residual_cos_l5_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 341,
+  "name": "abs_residual_cos_l6_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 342,
+  "name": "abs_residual_cos_l7_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 343,
+  "name": "abs_residual_cos_l8_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 344,
+  "name": "abs_residual_cos_l9_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 345,
+  "name": "abs_residual_cos_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 346,
+  "name": "abs_residual_cos_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 347,
+  "name": "abs_residual_cos_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 348,
+  "name": "abs_residual_cos_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 349,
+  "name": "abs_residual_cos_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 350,
+  "name": "abs_step_time_mean_finalwin",
+  "tier": "I"
+ },
+ {
+  "index": 351,
+  "name": "abs_update_ratio_agg_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 352,
+  "name": "abs_update_ratio_agg_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 353,
+  "name": "abs_update_ratio_agg_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 354,
+  "name": "abs_update_ratio_agg_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 355,
+  "name": "abs_update_ratio_classifier_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 356,
+  "name": "abs_update_ratio_classifier_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 357,
+  "name": "abs_update_ratio_classifier_final",
+  "tier": "I"
+ },
+ {
+  "index": 358,
+  "name": "abs_update_ratio_classifier_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 359,
+  "name": "abs_update_ratio_classifier_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 360,
+  "name": "abs_update_ratio_emb_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 361,
+  "name": "abs_update_ratio_emb_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 362,
+  "name": "abs_update_ratio_emb_final",
+  "tier": "I"
+ },
+ {
+  "index": 363,
+  "name": "abs_update_ratio_emb_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 364,
+  "name": "abs_update_ratio_emb_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 365,
+  "name": "abs_update_ratio_l0_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 366,
+  "name": "abs_update_ratio_l0_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 367,
+  "name": "abs_update_ratio_l0_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 368,
+  "name": "abs_update_ratio_l0_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 369,
+  "name": "abs_update_ratio_l10_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 370,
+  "name": "abs_update_ratio_l10_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 371,
+  "name": "abs_update_ratio_l10_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 372,
+  "name": "abs_update_ratio_l11_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 373,
+  "name": "abs_update_ratio_l11_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 374,
+  "name": "abs_update_ratio_l11_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 375,
+  "name": "abs_update_ratio_l1_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 376,
+  "name": "abs_update_ratio_l1_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 377,
+  "name": "abs_update_ratio_l1_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 378,
+  "name": "abs_update_ratio_l1_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 379,
+  "name": "abs_update_ratio_l2_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 380,
+  "name": "abs_update_ratio_l2_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 381,
+  "name": "abs_update_ratio_l2_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 382,
+  "name": "abs_update_ratio_l2_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 383,
+  "name": "abs_update_ratio_l3_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 384,
+  "name": "abs_update_ratio_l3_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 385,
+  "name": "abs_update_ratio_l3_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 386,
+  "name": "abs_update_ratio_l3_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 387,
+  "name": "abs_update_ratio_l4_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 388,
+  "name": "abs_update_ratio_l4_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 389,
+  "name": "abs_update_ratio_l4_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 390,
+  "name": "abs_update_ratio_l4_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 391,
+  "name": "abs_update_ratio_l5_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 392,
+  "name": "abs_update_ratio_l5_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 393,
+  "name": "abs_update_ratio_l5_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 394,
+  "name": "abs_update_ratio_l5_qkv_final",
+  "tier": "I"
+ },
+ {
+  "index": 395,
+  "name": "abs_update_ratio_l6_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 396,
+  "name": "abs_update_ratio_l6_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 397,
+  "name": "abs_update_ratio_l6_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 398,
+  "name": "abs_update_ratio_l7_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 399,
+  "name": "abs_update_ratio_l7_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 400,
+  "name": "abs_update_ratio_l7_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 401,
+  "name": "abs_update_ratio_l8_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 402,
+  "name": "abs_update_ratio_l8_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 403,
+  "name": "abs_update_ratio_l8_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 404,
+  "name": "abs_update_ratio_l9_attn_final",
+  "tier": "I"
+ },
+ {
+  "index": 405,
+  "name": "abs_update_ratio_l9_ffn_final",
+  "tier": "I"
+ },
+ {
+  "index": 406,
+  "name": "abs_update_ratio_l9_layernorm_final",
+  "tier": "I"
+ },
+ {
+  "index": 407,
+  "name": "abs_update_ratio_total_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 408,
+  "name": "abs_update_ratio_total_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 409,
+  "name": "abs_update_ratio_total_final",
+  "tier": "I"
+ },
+ {
+  "index": 410,
+  "name": "abs_update_ratio_total_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 411,
+  "name": "abs_update_ratio_total_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 412,
+  "name": "abs_val_accuracy_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 413,
+  "name": "abs_val_accuracy_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 414,
+  "name": "abs_val_accuracy_final",
+  "tier": "I"
+ },
+ {
+  "index": 415,
+  "name": "abs_val_accuracy_gap_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 416,
+  "name": "abs_val_accuracy_gap_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 417,
+  "name": "abs_val_accuracy_gap_final",
+  "tier": "I"
+ },
+ {
+  "index": 418,
+  "name": "abs_val_accuracy_gap_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 419,
+  "name": "abs_val_accuracy_gap_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 420,
+  "name": "abs_val_accuracy_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 421,
+  "name": "abs_val_accuracy_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 422,
+  "name": "abs_val_accuracy_neg_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 423,
+  "name": "abs_val_accuracy_neg_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 424,
+  "name": "abs_val_accuracy_neg_final",
+  "tier": "I"
+ },
+ {
+  "index": 425,
+  "name": "abs_val_accuracy_neg_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 426,
+  "name": "abs_val_accuracy_neg_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 427,
+  "name": "abs_val_accuracy_pos_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 428,
+  "name": "abs_val_accuracy_pos_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 429,
+  "name": "abs_val_accuracy_pos_final",
+  "tier": "I"
+ },
+ {
+  "index": 430,
+  "name": "abs_val_accuracy_pos_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 431,
+  "name": "abs_val_accuracy_pos_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 432,
+  "name": "abs_val_ece_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 433,
+  "name": "abs_val_ece_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 434,
+  "name": "abs_val_ece_final",
+  "tier": "I"
+ },
+ {
+  "index": 435,
+  "name": "abs_val_ece_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 436,
+  "name": "abs_val_ece_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 437,
+  "name": "abs_val_edge_case_mse_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 438,
+  "name": "abs_val_edge_case_mse_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 439,
+  "name": "abs_val_edge_case_mse_final",
+  "tier": "I"
+ },
+ {
+  "index": 440,
+  "name": "abs_val_edge_case_mse_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 441,
+  "name": "abs_val_edge_case_mse_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 442,
+  "name": "abs_val_edge_case_mse_std_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 443,
+  "name": "abs_val_edge_case_mse_std_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 444,
+  "name": "abs_val_edge_case_mse_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 445,
+  "name": "abs_val_edge_case_mse_std_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 446,
+  "name": "abs_val_edge_case_mse_std_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 447,
+  "name": "abs_val_f1_score_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 448,
+  "name": "abs_val_f1_score_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 449,
+  "name": "abs_val_f1_score_final",
+  "tier": "I"
+ },
+ {
+  "index": 450,
+  "name": "abs_val_f1_score_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 451,
+  "name": "abs_val_f1_score_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 452,
+  "name": "abs_val_logit_margin_mean_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 453,
+  "name": "abs_val_logit_margin_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 454,
+  "name": "abs_val_logit_margin_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 455,
+  "name": "abs_val_logit_margin_mean_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 456,
+  "name": "abs_val_logit_margin_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 457,
+  "name": "abs_val_logit_margin_min_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 458,
+  "name": "abs_val_logit_margin_min_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 459,
+  "name": "abs_val_logit_margin_min_final",
+  "tier": "I"
+ },
+ {
+  "index": 460,
+  "name": "abs_val_logit_margin_min_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 461,
+  "name": "abs_val_logit_margin_min_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 462,
+  "name": "abs_val_logit_margin_p25_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 463,
+  "name": "abs_val_logit_margin_p25_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 464,
+  "name": "abs_val_logit_margin_p25_final",
+  "tier": "I"
+ },
+ {
+  "index": 465,
+  "name": "abs_val_logit_margin_p25_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 466,
+  "name": "abs_val_logit_margin_p25_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 467,
+  "name": "abs_val_logit_margin_p50_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 468,
+  "name": "abs_val_logit_margin_p50_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 469,
+  "name": "abs_val_logit_margin_p50_final",
+  "tier": "I"
+ },
+ {
+  "index": 470,
+  "name": "abs_val_logit_margin_p50_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 471,
+  "name": "abs_val_logit_margin_p50_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 472,
+  "name": "abs_val_logit_margin_p75_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 473,
+  "name": "abs_val_logit_margin_p75_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 474,
+  "name": "abs_val_logit_margin_p75_final",
+  "tier": "I"
+ },
+ {
+  "index": 475,
+  "name": "abs_val_logit_margin_p75_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 476,
+  "name": "abs_val_logit_margin_p75_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 477,
+  "name": "abs_val_logit_margin_var_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 478,
+  "name": "abs_val_logit_margin_var_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 479,
+  "name": "abs_val_logit_margin_var_final",
+  "tier": "I"
+ },
+ {
+  "index": 480,
+  "name": "abs_val_logit_margin_var_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 481,
+  "name": "abs_val_logit_margin_var_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 482,
+  "name": "abs_val_loss_early_mean",
+  "tier": "P"
+ },
+ {
+  "index": 483,
+  "name": "abs_val_loss_early_slope",
+  "tier": "P"
+ },
+ {
+  "index": 484,
+  "name": "abs_val_loss_final",
+  "tier": "P"
+ },
+ {
+  "index": 485,
+  "name": "abs_val_loss_mid_mean",
+  "tier": "P"
+ },
+ {
+  "index": 486,
+  "name": "abs_val_loss_mid_slope",
+  "tier": "P"
+ },
+ {
+  "index": 487,
+  "name": "abs_val_margin_gap_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 488,
+  "name": "abs_val_margin_gap_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 489,
+  "name": "abs_val_margin_gap_final",
+  "tier": "I"
+ },
+ {
+  "index": 490,
+  "name": "abs_val_margin_gap_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 491,
+  "name": "abs_val_margin_gap_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 492,
+  "name": "abs_val_margin_neg_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 493,
+  "name": "abs_val_margin_neg_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 494,
+  "name": "abs_val_margin_neg_final",
+  "tier": "I"
+ },
+ {
+  "index": 495,
+  "name": "abs_val_margin_neg_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 496,
+  "name": "abs_val_margin_neg_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 497,
+  "name": "abs_val_margin_pos_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 498,
+  "name": "abs_val_margin_pos_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 499,
+  "name": "abs_val_margin_pos_final",
+  "tier": "I"
+ },
+ {
+  "index": 500,
+  "name": "abs_val_margin_pos_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 501,
+  "name": "abs_val_margin_pos_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 502,
+  "name": "abs_val_nll_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 503,
+  "name": "abs_val_nll_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 504,
+  "name": "abs_val_nll_final",
+  "tier": "I"
+ },
+ {
+  "index": 505,
+  "name": "abs_val_nll_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 506,
+  "name": "abs_val_nll_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 507,
+  "name": "abs_val_pos_acc_delta_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 508,
+  "name": "abs_val_pos_acc_delta_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 509,
+  "name": "abs_val_pos_acc_delta_final",
+  "tier": "I"
+ },
+ {
+  "index": 510,
+  "name": "abs_val_pos_acc_delta_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 511,
+  "name": "abs_val_pos_acc_delta_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 512,
+  "name": "abs_val_pos_inv_early_mean",
+  "tier": "P"
+ },
+ {
+  "index": 513,
+  "name": "abs_val_pos_inv_early_slope",
+  "tier": "P"
+ },
+ {
+  "index": 514,
+  "name": "abs_val_pos_inv_final",
+  "tier": "P"
+ },
+ {
+  "index": 515,
+  "name": "abs_val_pos_inv_mid_mean",
+  "tier": "P"
+ },
+ {
+  "index": 516,
+  "name": "abs_val_pos_inv_mid_slope",
+  "tier": "P"
+ },
+ {
+  "index": 517,
+  "name": "abs_val_pos_margin_delta_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 518,
+  "name": "abs_val_pos_margin_delta_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 519,
+  "name": "abs_val_pos_margin_delta_final",
+  "tier": "I"
+ },
+ {
+  "index": 520,
+  "name": "abs_val_pos_margin_delta_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 521,
+  "name": "abs_val_pos_margin_delta_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 522,
+  "name": "abs_val_precision_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 523,
+  "name": "abs_val_precision_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 524,
+  "name": "abs_val_precision_final",
+  "tier": "I"
+ },
+ {
+  "index": 525,
+  "name": "abs_val_precision_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 526,
+  "name": "abs_val_precision_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 527,
+  "name": "abs_val_primary_metric_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 528,
+  "name": "abs_val_primary_metric_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 529,
+  "name": "abs_val_primary_metric_final",
+  "tier": "I"
+ },
+ {
+  "index": 530,
+  "name": "abs_val_primary_metric_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 531,
+  "name": "abs_val_primary_metric_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 532,
+  "name": "abs_val_recall_early_mean",
+  "tier": "I"
+ },
+ {
+  "index": 533,
+  "name": "abs_val_recall_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 534,
+  "name": "abs_val_recall_final",
+  "tier": "I"
+ },
+ {
+  "index": 535,
+  "name": "abs_val_recall_mid_mean",
+  "tier": "I"
+ },
+ {
+  "index": 536,
+  "name": "abs_val_recall_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 537,
+  "name": "abs_weight_mean_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 538,
+  "name": "abs_weight_mean_final",
+  "tier": "I"
+ },
+ {
+  "index": 539,
+  "name": "abs_weight_mean_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 540,
+  "name": "abs_weight_std_early_slope",
+  "tier": "I"
+ },
+ {
+  "index": 541,
+  "name": "abs_weight_std_final",
+  "tier": "I"
+ },
+ {
+  "index": 542,
+  "name": "abs_weight_std_mid_slope",
+  "tier": "I"
+ },
+ {
+  "index": 543,
+  "name": "arch_enc",
+  "tier": "S"
+ },
+ {
+  "index": 544,
+  "name": "layer_idx_num",
+  "tier": "S"
+ },
+ {
+  "index": 545,
+  "name": "severity_scalar",
+  "tier": "S"
+ }
+]

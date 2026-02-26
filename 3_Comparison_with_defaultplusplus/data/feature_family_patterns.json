@@ -1,0 +1,103 @@
+{
+  "Attention statistics": [
+    "attn_entropy",
+    "attn_cross_example",
+    "attn_mass",
+    "attn_max",
+    "attn_score_skew",
+    "attn_score_var",
+    "attn_sparsity",
+    "attn_weight_magnitude",
+    "head_similarity",
+    "pos_recv",
+    "presoftmax",
+    "mass_leak",
+    "mass_pad",
+    "cross_example_attn"
+  ],
+  "QKV alignment": [
+    "update_ratio.*qkv",
+    "update_active.*qkv",
+    "grad_norm.*qkv"
+  ],
+  "Score statistics": [
+    "presoftmax_kurt",
+    "presoftmax_mean",
+    "presoftmax_skew",
+    "presoftmax_var",
+    "attn_score"
+  ],
+  "Positional discrim.": [
+    "pos_acc",
+    "pos_loss",
+    "pos_margin",
+    "val_pos_inv",
+    "val_pos_margin",
+    "val_pos_acc"
+  ],
+  "FFN output magnitude": [
+    "ffn_delta",
+    "ffn_out_skew",
+    "ffn_var_ratio",
+    "ffn_active",
+    "h1_delta_norm",
+    "activation_mean",
+    "activation_std"
+  ],
+  "LayerNorm statistics": [
+    "(?:^|_)ln_",
+    "layernorm",
+    "update_ratio.*layernorm",
+    "update_active.*layernorm",
+    "grad_norm.*layernorm"
+  ],
+  "Residual stream sim.": [
+    "residual_cos"
+  ],
+  "Representation drift": [
+    "(?:^|_)repr_",
+    "(?:^|_)repr$"
+  ],
+  "Embedding statistics": [
+    "emb_norm",
+    "update_ratio_emb",
+    "update_active_emb",
+    "grad_norm_emb"
+  ],
+  "Training dynamics": [
+    "(?:^|_)loss(?:_|$)",
+    "val_loss",
+    "grad_norm_total",
+    "grad_abs_max",
+    "grad_zero_ratio",
+    "update_ratio_total",
+    "update_ratio_classifier",
+    "weight_mean",
+    "weight_std"
+  ],
+  "Task metrics": [
+    "accuracy",
+    "precision(?\\!_target)",
+    "recall(?\\!_at)",
+    "f1_score",
+    "val_primary_metric",
+    "val_accuracy",
+    "val_ece",
+    "val_edge_case",
+    "val_f1",
+    "val_nll",
+    "val_recall",
+    "val_precision",
+    "perplexity",
+    "(?:^|_)ece(?:_|$)",
+    "(?:^|_)nll(?:_|$)"
+  ],
+  "Kernel timing": [
+    "peak_mem",
+    "step_time"
+  ],
+  "Cache diagnostics": [
+    "cache_hidden",
+    "cache_nll"
+  ]
+}

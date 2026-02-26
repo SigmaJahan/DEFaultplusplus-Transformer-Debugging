@@ -1,0 +1,21 @@
+# OS artifacts
+.DS_Store
+
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Runtime/log/temp artifacts
+*.log
+*.out
+*.tmp
+*.temp
+
+# Environment/local
+.venv/
+venv/
+.env
