@@ -1,10 +1,10 @@
-# DEFault++ Fault Debugging Replication
+# DEFault++ Fault Debugging Study Artifact
 
-![Artifact](https://img.shields.io/badge/artifact-replication-blue)
+![Artifact](https://img.shields.io/badge/artifact-study-blue)
 ![Access](https://img.shields.io/badge/access-private-critical)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
-Standalone replication artifact for the DEFault++ fault debugging study.
+Codebase and curated datasets for the DEFault++ fault debugging study.
 
 ## Scope
 
@@ -60,7 +60,3 @@ This repository retains code and final/processed data required for replication w
 - `manifests/pre_patch_sha256.txt`
 - `manifests/post_patch_sha256.txt`
 - `manifests/changes_since_copy.txt`
-
-## Collaboration
-
-See `CONTRIBUTING.md` for contribution rules and `REPRODUCIBILITY.md` for execution protocol.
