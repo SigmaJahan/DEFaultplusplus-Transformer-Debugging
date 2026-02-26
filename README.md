@@ -1,41 +1,66 @@
-# DEFault++ Replication Package
+# DEFault++ Fault Debugging Replication
 
-This package is a copy-only split of the DEFault++ study artifacts from the combined thesis workspace.
+![Artifact](https://img.shields.io/badge/artifact-replication-blue)
+![Access](https://img.shields.io/badge/access-private-critical)
+![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
 
-## Included Components
+Standalone replication artifact for the DEFault++ fault debugging study.
 
-- `1_Detection_Categorization_XAI/` (Stage 1 + Stage 2 + XAI code/data)
-- `2_Diagnosis_Root_Cause/` (Stage 3 diagnosis + NDG)
-- `3_Comparison_with_defaultplusplus/` (RQ6 baseline comparisons)
-- `default++_results/` (frozen original result outputs and final plots)
-- `results/` (canonicalized stage result layout for script compatibility)
+## Scope
 
-## Applied Hardening in This Copy
+This repository contains the end-to-end study pipeline across detection, categorization/XAI, diagnosis/root-cause, and RQ6 comparison.
 
-- Replaced broken `2_Diagnosis_Root_Cause/data` symlinks with local file copies.
-- Canonicalized stage outputs into:
-  - `results/stage_1_detection/`
-  - `results/stage_2_categorization/`
-  - `results/stage_2.1_categorization_xai/`
-  - `results/stage_3_diagnosis/`
-- Patched stale path constants in Stage-3 and RQ6 scripts.
-- Updated run scripts to avoid missing cross-arch PKL assumptions.
+Included:
+- `1_Detection_Categorization_XAI/`
+- `2_Diagnosis_Root_Cause/`
+- `3_Comparison_with_defaultplusplus/`
+- `default++_results/` (frozen historical outputs)
+- `results/` (canonicalized output layout)
+- `scripts/` (top-level execution entry points)
 
-## Canonical Naming and Navigation
+## Quick Start
 
-To improve readability and reduce command ambiguity, use canonical wrapper scripts in:
-- `scripts/`
+Run from repository root:
 
-Canonical index and legacy-name mapping:
-- `CANONICAL_SCRIPT_INDEX.md`
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r 1_Detection_Categorization_XAI/requirements.txt
+pip install -r 2_Diagnosis_Root_Cause/requirements.txt
+```
 
-These wrappers do not replace legacy files; they only provide clearer names.
+Core stage execution:
+
+```bash
+bash scripts/run_stage1_preprocess.sh
+bash scripts/run_stage1_classifiers.sh
+bash scripts/run_stage2_xai.sh
+bash scripts/run_stage2_rq3_ablation.sh
+bash scripts/run_stage3_diagnosis_builder.sh
+bash scripts/run_stage3_signature_matching_rq5.sh
+bash scripts/run_stage3_ndg_cli.sh
+bash scripts/run_rq6_baseline_comparison.sh
+```
+
+## Repository Layout
+
+- `1_Detection_Categorization_XAI/`: Stage-1 detection and Stage-2 categorization/XAI
+- `2_Diagnosis_Root_Cause/`: Stage-3 diagnosis, signature matching, NDG
+- `3_Comparison_with_defaultplusplus/`: RQ6 baseline comparison workflows
+- `default++_results/`: preserved original outputs
+- `results/`: canonicalized stage outputs for stable script paths
+- `manifests/`: file-level integrity manifests
+
+## Data Policy
+
+This repository retains code and final/processed data required for replication while avoiding unnecessary transient artifacts.
 
 ## Integrity
 
-- Pre-edit file manifest for this package copy:
-  - `manifests/pre_patch_sha256.txt`
-- Post-edit file manifest:
-  - `manifests/post_patch_sha256.txt`
-- Thesis alignment map:
-  - `THESIS_ALIGNMENT.md`
+- `manifests/pre_patch_sha256.txt`
+- `manifests/post_patch_sha256.txt`
+- `manifests/changes_since_copy.txt`
+
+## Collaboration
+
+See `CONTRIBUTING.md` for contribution rules and `REPRODUCIBILITY.md` for execution protocol.
