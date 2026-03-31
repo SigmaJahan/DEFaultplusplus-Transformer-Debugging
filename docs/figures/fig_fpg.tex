@@ -1,0 +1,258 @@
+\documentclass[tikz,border=3pt]{standalone}
+\usepackage{iftex}
+\ifLuaTeX
+  \usepackage{fontspec}
+  \usepackage{unicode-math}
+  \setmainfont{Libertinus Serif}
+  \setsansfont{Libertinus Sans}
+  \setmathfont{Libertinus Math}
+\else
+  \usepackage[T1]{fontenc}
+  \usepackage{libertinus}
+  \usepackage{libertinust1math}
+\fi
+\usepackage{amsmath}
+\ifLuaTeX\else\usepackage{amssymb}\fi
+\usetikzlibrary{positioning,arrows.meta,calc,
+                backgrounds,fit,bending,shapes.geometric}
+
+% ── Colour palette (colourblind-safe) ──
+\definecolor{fwdC}{HTML}{2166AC}
+\definecolor{simC}{HTML}{4393C3}
+\definecolor{resC}{HTML}{B2182B}
+\definecolor{gradC}{HTML}{7B5EA7}
+\definecolor{compC}{HTML}{2166AC}
+\definecolor{normC}{HTML}{762A83}
+\definecolor{juncC}{HTML}{B2182B}
+\definecolor{ioC}{HTML}{1B7837}
+\definecolor{sideC}{HTML}{636363}
+\definecolor{dk}{HTML}{1a1a1a}
+
+\begin{document}
+\begin{tikzpicture}[
+  >=Stealth,
+  every node/.style={font=\sffamily\small, text=dk},
+  comp/.style={
+    draw=compC!80, fill=compC!5, rounded corners=2.5pt,
+    minimum width=2.6cm, minimum height=0.6cm,
+    font=\sffamily\small, align=center, inner sep=3pt,
+    line width=0.65pt,
+  },
+  junc/.style={
+    draw=juncC!85, fill=juncC!7,
+    circle, minimum size=0.7cm,
+    font=\sffamily\small\bfseries, inner sep=0pt,
+    line width=1.0pt,
+  },
+  norm/.style={
+    draw=normC!65, fill=normC!4, rounded corners=2.5pt,
+    minimum width=2.2cm, minimum height=0.55cm,
+    font=\sffamily\small, align=center, inner sep=3pt,
+    line width=0.65pt, densely dashed,
+  },
+  io/.style={
+    draw=ioC!70, fill=ioC!5, rounded corners=2.5pt,
+    minimum width=2.2cm, minimum height=0.55cm,
+    font=\sffamily\small, align=center, inner sep=3pt,
+    line width=0.65pt,
+  },
+  side/.style={
+    draw=sideC!45, fill=sideC!3, rounded corners=2pt,
+    minimum width=1.5cm, minimum height=0.45cm,
+    font=\sffamily\scriptsize, align=center, inner sep=2pt,
+    line width=0.5pt, densely dotted,
+  },
+  fwd/.style={
+    -{Stealth[length=4pt,width=3pt]}, line width=0.7pt, fwdC!75,
+  },
+  sim/.style={
+    -{Stealth[length=4pt,width=3pt]}, line width=0.7pt,
+    simC!60, densely dashed,
+  },
+  res/.style={
+    -{Stealth[length=5pt,width=3.5pt]}, line width=1.3pt, resC!65,
+  },
+  grad/.style={
+    -{Stealth[length=4pt,width=3pt]}, line width=0.6pt,
+    gradC!40, densely dotted,
+  },
+  tl/.style={font=\sffamily\fontsize{5.5pt}{5.5pt}\selectfont,
+             text=dk!45, inner sep=0.5pt},
+]
+
+% ════════════════════════════════════════════════════
+% NODE PLACEMENT
+% ════════════════════════════════════════════════════
+
+\def\vs{1.1}
+\def\hs{4.0}
+
+\node[io] (emb) at (0, 0) {Embedding};
+\node[io] (pos) at (\hs, 0) {Positional};
+
+\node[comp] (qkv) at (\hs/2, -\vs) {QKV Projection};
+
+% Score/Mask spread wide
+\node[comp] (score) at (-0.4, -2.35*\vs) {Score Computation};
+\node[comp] (mask)  at (\hs+0.4, -2.35*\vs) {Attention Masking};
+
+\node[comp] (aw) at (\hs/2, -3.4*\vs) {Attention Weights};
+\node[comp] (ao) at (\hs/2, -4.4*\vs) {Attention Output};
+
+\node[junc] (j1) at (\hs/2, -5.35*\vs) {$\oplus$};
+\node[norm] (ln1) at (\hs/2, -6.25*\vs) {LayerNorm};
+
+\node[comp, draw=ioC!75, fill=ioC!5] (ffn) at (\hs/2, -7.25*\vs)
+  {Feed-Forward Network};
+
+\node[junc] (j2) at (\hs/2, -8.2*\vs) {$\oplus$};
+\node[norm] (ln2) at (\hs/2, -9.05*\vs) {LayerNorm};
+\node[io] (out) at (\hs/2, -9.95*\vs) {Output Head};
+
+% KV Cache: at QKV height, horizontal
+\node[side] (kvc) at ([xshift=3.8cm]qkv.east |- qkv) {KV Cache};
+
+% ════════════════════════════════════════════════════
+% R1: FORWARD EDGES
+% ════════════════════════════════════════════════════
+
+\draw[fwd] (emb.south) -- ++(0,-0.12) -| ([xshift=-4pt]qkv.north);
+\draw[fwd] (pos.south) -- ++(0,-0.12) -| ([xshift=4pt]qkv.north);
+
+% QKV splits: wide offsets to leave room for V line
+\draw[fwd] ([xshift=-8pt]qkv.south) -- ++(0,-0.1) -| (score.north);
+\draw[fwd] ([xshift= 8pt]qkv.south) -- ++(0,-0.1) -| (mask.north);
+
+% Score -> Mask: label BELOW to clear V line
+\draw[fwd] (score.east) -- (mask.west)
+  node[tl, midway, below, yshift=-2pt] {$S' {=} S {+} M$};
+
+\draw[fwd] (score.south) -- ++(0,-0.1) -| ([xshift=-5pt]aw.north);
+\draw[fwd] (mask.south)  -- ++(0,-0.1) -| ([xshift= 5pt]aw.north);
+
+\draw[fwd] (aw) -- (ao);
+\draw[fwd] (ao) -- (j1);
+\draw[fwd] (j1) -- (ln1);
+\draw[fwd] (ln1) -- (ffn);
+\draw[fwd] (ffn) -- (j2);
+\draw[fwd] (j2) -- (ln2);
+\draw[fwd] (ln2) -- (out);
+
+% ════════════════════════════════════════════════════
+% R2: SIMULTANEOUS EDGES
+% ════════════════════════════════════════════════════
+
+% V bypass: centre lane
+\draw[sim] (qkv.south) -- ++(0,-0.1)
+  -| (ao.north)
+  node[font=\sffamily\fontsize{7pt}{7pt}\selectfont, text=simC!75,
+       pos=0.08, right, inner sep=2pt] {\textit{V}};
+
+% KV Cache: horizontal from QKV east
+\draw[sim] (qkv.east) -- (kvc.west)
+  node[font=\sffamily\fontsize{6pt}{6pt}\selectfont, text=sideC!55,
+       midway, above, inner sep=1pt] {store $K,\!V$};
+
+% ════════════════════════════════════════════════════
+% R3: RESIDUAL SKIP EDGES (thick red — fault propagation)
+% ════════════════════════════════════════════════════
+
+% Skip 1: input -> j1 (LEFT arc, bypass Attention)
+\def\skpL{-1.8cm}
+
+\coordinate (s1tap) at ($([xshift=-4pt]qkv.north)!0.5!(emb.south)$);
+\coordinate (s1L)   at ([xshift=\skpL]score.west |- s1tap);
+\coordinate (s1B)   at ([xshift=\skpL]score.west |- j1.west);
+
+\draw[res] (s1tap) -- (s1L) -- (s1B) -- (j1.west);
+\node[font=\sffamily\fontsize{6pt}{6pt}\selectfont\itshape,
+      text=resC!50, fill=white, inner sep=1pt, rotate=-90]
+  at ($(s1L)!0.48!(s1B)$) {residual skip};
+
+% Skip 2: ln1 -> j2 (RIGHT arc, bypass FFN)
+\def\skpR{1.8cm}
+
+\coordinate (s2tap) at ($(ln1.south)!0.5!(ffn.north)$);
+\coordinate (s2R)   at ([xshift=\skpR]mask.east |- s2tap);
+\coordinate (s2B)   at ([xshift=\skpR]mask.east |- j2.east);
+
+\draw[res] (s2tap) -- (s2R) -- (s2B) -- (j2.east);
+\node[font=\sffamily\fontsize{6pt}{6pt}\selectfont\itshape,
+      text=resC!50, fill=white, inner sep=1pt, rotate=90]
+  at ($(s2R)!0.48!(s2B)$) {residual skip};
+
+% ════════════════════════════════════════════════════
+% R5: GRADIENT
+% ════════════════════════════════════════════════════
+
+\draw[grad] (out.south) -- ++(0,-0.4)
+  node[below, font=\footnotesize, text=gradC!42, anchor=north]
+  {$\nabla_\theta\mathcal{L}$ \textsf{\fontsize{6.5pt}{6.5pt}\selectfont
+    propagates in reverse along all edges}};
+
+% ════════════════════════════════════════════════════
+% BLOCK GROUPING
+% ════════════════════════════════════════════════════
+
+\begin{scope}[on background layer]
+  \node[fit=(qkv)(score)(mask)(aw)(ao),
+        fill=compC!3, draw=compC!10,
+        rounded corners=5pt, inner sep=8pt] (attnbox) {};
+  \node[fit=(ln1)(ffn),
+        fill=ioC!3, draw=ioC!8,
+        rounded corners=5pt, inner xsep=8pt, inner ysep=14pt] (ffnbox) {};
+\end{scope}
+
+% Sub-graph labels (outside background scope so they render on top)
+\node[font=\sffamily\fontsize{6pt}{6pt}\selectfont\itshape,
+      text=compC!30, anchor=south west]
+  at ([xshift=3pt,yshift=3pt]attnbox.south west) {Attention Sub-graph};
+\node[font=\sffamily\fontsize{6pt}{6pt}\selectfont\itshape,
+      text=ioC!30, anchor=north west]
+  at ([xshift=3pt,yshift=-2pt]ffnbox.north west) {FFN Sub-graph};
+
+% ════════════════════════════════════════════════════
+% LEGEND
+% ════════════════════════════════════════════════════
+
+\coordinate (Lorg) at (-2.4, -11.4*\vs);
+
+\node[draw=dk!10, fill=white, rounded corners=2.5pt,
+      inner sep=0pt, minimum width=11.2cm, minimum height=1.15cm,
+      anchor=north west] at (Lorg) {};
+
+% Line 1: Edge types
+\node[anchor=west, font=\sffamily\fontsize{7pt}{7pt}\selectfont, text=dk!50]
+  at ([xshift=8pt,yshift=-9pt]Lorg) {%
+  \textcolor{fwdC!75}{\rule[0.5ex]{10pt}{0.7pt}\,$\blacktriangleright$}
+  \;R1: Forward\quad
+  \textcolor{simC!60}{-\,-\,$\blacktriangleright$}
+  \;R2: Simultaneous\quad
+  \textcolor{resC!65}{\rule[0.5ex]{10pt}{1.3pt}\,$\blacktriangleright$}
+  \;R3: Residual\quad
+  \textcolor{gradC!40}{$\cdot\;\cdot\;\cdot$\,$\blacktriangleright$}
+  \;R5: Gradient%
+};
+
+% Line 2: Node types
+\node[anchor=west, font=\sffamily\fontsize{6.5pt}{6.5pt}\selectfont, text=dk!42]
+  at ([xshift=8pt,yshift=-23pt]Lorg) {%
+  \raisebox{0.5pt}{\tikz\draw[compC!80,rounded corners=1.2pt,
+    line width=0.5pt,fill=compC!5]
+    (0,0) rectangle (0.42,0.22);}
+  \;Computation\quad
+  \raisebox{0.5pt}{\tikz\draw[normC!65,rounded corners=1.2pt,
+    line width=0.5pt,densely dashed,fill=normC!4]
+    (0,0) rectangle (0.42,0.22);}
+  \;Normalization\quad
+  \raisebox{0.5pt}{\tikz\draw[juncC!85,line width=0.8pt,fill=juncC!7]
+    (0.12,0.12) circle (0.12);}
+  \;Residual Junction ($\oplus$)\quad
+  \raisebox{0.5pt}{\tikz\draw[ioC!70,rounded corners=1.2pt,
+    line width=0.5pt,fill=ioC!5]
+    (0,0) rectangle (0.42,0.22);}
+  \;I/O%
+};
+
+\end{tikzpicture}
+\end{document}
