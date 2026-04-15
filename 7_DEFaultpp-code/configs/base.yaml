@@ -1,0 +1,32 @@
+data:
+  # Paths are resolved from the repository root
+  data_dir: 3_Mutation-Data-from-Frakenformer
+  encoder_csv: 3_Mutation-Data-from-Frakenformer/encoder_v1_killed_binary.csv
+  decoder_csv: 3_Mutation-Data-from-Frakenformer/decoder_v1_killed_binary.csv
+  encoder_origin_csv: 3_Mutation-Data-from-Frakenformer/encoder_absolute_filled_labeled.csv
+  decoder_origin_csv: 3_Mutation-Data-from-Frakenformer/decoder_absolute_filled_labeled.csv
+
+cv:
+  n_splits: 5
+  seed: 42
+  group_key: [model_name, dataset_name, seed]
+
+model:
+  group_hidden_dim: 32
+  embedding_dim: 64
+  n_message_passing: 1
+  dropout: 0.1
+  temperature: 0.1
+
+training:
+  epochs: 100
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 256
+  patience: 15
+  # Hierarchical loss weights: L = L_detect + alpha*L_category + lambda*L_rootcause + beta*L_sibling
+  alpha: 1.0
+  lambda_rootcause: 1.0
+  beta_sibling: 0.5
+
+seed: 42

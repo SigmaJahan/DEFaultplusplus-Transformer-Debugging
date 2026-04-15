@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
-echo "Creating virtual environment..."
-python3 -m venv .venv
+if [ ! -d .venv ]; then
+  echo "Creating virtual environment in $ROOT/.venv"
+  python3 -m venv --system-site-packages .venv
+else
+  echo "Reusing existing virtual environment in $ROOT/.venv"
+fi
+
 source .venv/bin/activate
-
-echo "Upgrading pip..."
-pip install --upgrade pip
-
-echo "Installing package with dev dependencies..."
-pip install -e ".[dev]"
-
-echo ""
-echo "Setup complete. Activate with:"
-echo "  source .venv/bin/activate"
+python -m pip install --no-build-isolation --no-deps -e ".[dev]"

@@ -1,0 +1,36 @@
+{
+  "issue_id": 23349,
+  "sheet_row_id": 1,
+  "title": "jax.nn.dot_product_attention does not respect key_value_seq_lengths",
+  "issue_url": "https://github.com/jax-ml/jax/issues/23349",
+  "source_repo": "jax-ml/jax",
+  "source_component": "jax/_src/nn/functions.py",
+  "issue_summary": "The JAX attention path leaked information from padded key/value positions even when key_value_seq_lengths was provided, so masked tokens still influenced the output.",
+  "root_cause": {
+    "summary": "The attention implementation did not correctly enforce the provided key/value sequence lengths when forming attention masks.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "Non-zero attention mass lands on padded tokens, producing data leakage from invalid positions.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/jax-ml/jax/pull/23415",
+    "merge_commit": "e869a9d65e568e36e95940db302f94f9b7b973c4"
+  },
+  "local_reproduction": {
+    "case_file": "benchmarks-realworld/cases/issue_23349_jax_seq_lengths.py",
+    "runner_slug": "issue_23349_jax_seq_lengths",
+    "dataset": "synthetic tensors",
+    "mapping": "The local case mirrors the bug by comparing attention with and without an explicit key/value length mask and measuring leaked mass on padded positions."
+  },
+  "issue_contract": {
+    "trigger": "Run attention with provided key/value valid lengths and padded trailing positions.",
+    "mechanism": "The buggy path ignores key/value sequence-length masking, so padded keys remain visible.",
+    "observable_symptom": "Non-zero attention mass lands on padded or invalid positions."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "benchmarks-realworld/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces failure to enforce key/value sequence lengths during attention masking.",
+    "issue_level_observable_claim": "This case reproduces the reported symptom of attention leaking onto padded or invalid positions.",
+    "exact_historical_replay": false
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "issue_id": 17886,
+  "sheet_row_id": 10,
+  "title": "Pruning function in T5Attention does not affect relative position bucket state",
+  "issue_url": "https://github.com/huggingface/transformers/issues/17886",
+  "source_repo": "huggingface/transformers",
+  "source_component": "src/transformers/models/t5/modeling_t5.py",
+  "issue_summary": "Pruning T5 attention heads removed the projection heads but did not consistently update the relative-position bias path, so pruned inference remained misaligned.",
+  "root_cause": {
+    "summary": "Head pruning did not propagate correctly to the relative position bias bookkeeping and masking path.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "After pruning, the remaining heads use the wrong relative bias slices and produce misaligned scores.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/huggingface/transformers/pull/17968",
+    "merge_commit": "734b7e2a5a717ccdebbda3f98da7ea947b417b65"
+  },
+  "local_reproduction": {
+    "case_file": "benchmarks-realworld/cases/issue_17886_t5_prune_relative_bias.py",
+    "runner_slug": "issue_17886_t5_prune_relative_bias",
+    "dataset": "synthetic token states",
+    "mapping": "The local case prunes selected heads, keeps the weight projections consistent, and contrasts a stale bias slice ordering against a correctly pruned bias tensor."
+  },
+  "issue_contract": {
+    "trigger": "Prune a subset of attention heads in a model with relative position bias.",
+    "mechanism": "The buggy path keeps the pruned projection heads but reuses the wrong relative-bias head slices.",
+    "observable_symptom": "Pruned attention scores become inconsistent because the bias tensor is misaligned."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "benchmarks-realworld/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces head pruning that fails to update the relative-position bias path consistently.",
+    "issue_level_observable_claim": "This case reproduces the reported symptom that pruned attention behaves inconsistently because relative bias stays misaligned.",
+    "exact_historical_replay": false
+  }
+}

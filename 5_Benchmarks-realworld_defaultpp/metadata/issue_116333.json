@@ -1,0 +1,36 @@
+{
+  "issue_id": 116333,
+  "sheet_row_id": 39,
+  "title": "contiguous does not work with one non-singleton dimension",
+  "issue_url": "https://github.com/pytorch/pytorch/issues/116333",
+  "source_repo": "pytorch/pytorch",
+  "source_component": "attention kernel stride validation",
+  "issue_summary": "The fast attention path rejected tensors after contiguous when the last dimension was singleton and therefore had a stride different from one, even though such singleton-dimension stride layouts are valid.",
+  "root_cause": {
+    "summary": "The backend validator treated last-dimension stride equal to one as a universal requirement instead of exempting singleton dimensions.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "Fast or memory-efficient attention falls back or errors out on tensors whose last dimension has size one and stride greater than one.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/pytorch/pytorch/pull/117001",
+    "merge_commit": null
+  },
+  "local_reproduction": {
+    "case_file": "benchmarks-realworld/cases/issue_116333_kernel_stride_check.py",
+    "runner_slug": "issue_116333_kernel_stride_check",
+    "dataset": "synthetic tensor layout",
+    "mapping": "The local case constructs a tensor view with element strides [1, 2] and singleton last dimension, then compares the buggy validator that rejects it with the corrected validator that accepts singleton-dimension layouts."
+  },
+  "issue_contract": {
+    "trigger": "Send a tensor whose last dimension is singleton but has stride greater than one to the fast attention validator.",
+    "mechanism": "The buggy validator requires last-dimension stride 1 even when the last dimension has size 1.",
+    "observable_symptom": "A valid tensor layout is rejected by the fast attention backend."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "benchmarks-realworld/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces the overly strict kernel stride validator on singleton trailing dimensions.",
+    "issue_level_observable_claim": "This case reproduces the reported observable symptom that the fast attention path rejects an otherwise valid input layout.",
+    "exact_historical_replay": false
+  }
+}

@@ -1,0 +1,1068 @@
+{
+  "metadata": {
+    "pipeline_name": "Silent Fault Severity Matrix (Low/Med/High)",
+    "generation_date": "2026-04-06",
+    "strategy": "All 13 fault categories with severity levels. Ordered: HIGH severity first, then MEDIUM, then LOW. All tuned for silent faults (probe-detectable, no crash/NaN).",
+    "seeds": [
+      42,
+      123
+    ],
+    "layer_indices": [
+      0,
+      2,
+      5
+    ]
+  },
+  "baseline": [
+    {
+      "config_id": "baseline_1",
+      "fault_id": null,
+      "fault_name": "clean_baseline",
+      "category": "baseline",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": true,
+      "seed": 42,
+      "description": "Clean baseline seed 42"
+    },
+    {
+      "config_id": "baseline_2",
+      "fault_id": null,
+      "fault_name": "clean_baseline",
+      "category": "baseline",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": true,
+      "seed": 123,
+      "description": "Clean baseline seed 123"
+    }
+  ],
+  "faults": [
+    {
+      "config_id": "mask_break_hi_s42",
+      "fault_id": "E1.1_hi",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "visibility_ratio": 0.5
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Causal leak 50% (high, silent)"
+    },
+    {
+      "config_id": "mask_break_hi_s123",
+      "fault_id": "E1.1_hi",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "visibility_ratio": 0.5
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Causal leak 50% (high, silent)"
+    },
+    {
+      "config_id": "emb_zero_hi_s42",
+      "fault_id": "E8.1_hi",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": null,
+      "severity_params": {
+        "fraction": 0.15
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Zero 15% embeddings (high, silent)"
+    },
+    {
+      "config_id": "emb_zero_hi_s123",
+      "fault_id": "E8.1_hi",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": null,
+      "severity_params": {
+        "fraction": 0.15
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Zero 15% embeddings (high, silent)"
+    },
+    {
+      "config_id": "ffn_drop_hi_s42",
+      "fault_id": "E9.2_hi",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "drop_fraction": 0.4
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "FFN 40% neuron drop (high, silent)"
+    },
+    {
+      "config_id": "ffn_drop_hi_s123",
+      "fault_id": "E9.2_hi",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "drop_fraction": 0.4
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "FFN 40% neuron drop (high, silent)"
+    },
+    {
+      "config_id": "kernel_unopt_s42",
+      "fault_id": "E5.1",
+      "fault_name": "force_unoptimized",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Force unoptimized attention (silent)"
+    },
+    {
+      "config_id": "kernel_unopt_s123",
+      "fault_id": "E5.1",
+      "fault_name": "force_unoptimized",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Force unoptimized attention (silent)"
+    },
+    {
+      "config_id": "kv_leak_hi_s42",
+      "fault_id": "E7.4_hi",
+      "fault_name": "cross_request_leak",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "leak_ratio": 0.8
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Cache leak 80% (high, silent)"
+    },
+    {
+      "config_id": "kv_leak_hi_s123",
+      "fault_id": "E7.4_hi",
+      "fault_name": "cross_request_leak",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "leak_ratio": 0.8
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Cache leak 80% (high, silent)"
+    },
+    {
+      "config_id": "ln_gamma_hi_s42",
+      "fault_id": "E10.1_hi",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "gamma_scale": 0.3
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "LN gamma 0.3x (high, silent)"
+    },
+    {
+      "config_id": "ln_gamma_hi_s123",
+      "fault_id": "E10.1_hi",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "gamma_scale": 0.3
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "LN gamma 0.3x (high, silent)"
+    },
+    {
+      "config_id": "ln_beta_hi_s42",
+      "fault_id": "E10.2_hi",
+      "fault_name": "ln_beta_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "delta_std": 0.1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "LN beta noise 0.1 (high, silent)"
+    },
+    {
+      "config_id": "ln_beta_hi_s123",
+      "fault_id": "E10.2_hi",
+      "fault_name": "ln_beta_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "delta_std": 0.1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "LN beta noise 0.1 (high, silent)"
+    },
+    {
+      "config_id": "mask_zero_l0_s42",
+      "fault_id": "E1.1a",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Zero attention mask layer 0 (silent, attend to PAD)"
+    },
+    {
+      "config_id": "mask_zero_l0_s123",
+      "fault_id": "E1.1a",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Zero attention mask layer 0 (silent, attend to PAD)"
+    },
+    {
+      "config_id": "mask_zero_l2_s42",
+      "fault_id": "E1.1b",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Zero attention mask layer 2 (silent, attend to PAD)"
+    },
+    {
+      "config_id": "mask_zero_l2_s123",
+      "fault_id": "E1.1b",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Zero attention mask layer 2 (silent, attend to PAD)"
+    },
+    {
+      "config_id": "mask_invert_s42",
+      "fault_id": "E1.2",
+      "fault_name": "inverted_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Inverted mask (silent, wrong tokens visible)"
+    },
+    {
+      "config_id": "mask_invert_s123",
+      "fault_id": "E1.2",
+      "fault_name": "inverted_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Inverted mask (silent, wrong tokens visible)"
+    },
+    {
+      "config_id": "mask_broadcast_s42",
+      "fault_id": "E1.3",
+      "fault_name": "wrong_mask_broadcast",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Wrong mask broadcast (silent, cross-example leak)"
+    },
+    {
+      "config_id": "mask_broadcast_s123",
+      "fault_id": "E1.3",
+      "fault_name": "wrong_mask_broadcast",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Wrong mask broadcast (silent, cross-example leak)"
+    },
+    {
+      "config_id": "out_scale_hi_s42",
+      "fault_id": "E12.1_hi",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "alpha": 0.5
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Output scale 0.5x (high, silent)"
+    },
+    {
+      "config_id": "out_scale_hi_s123",
+      "fault_id": "E12.1_hi",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "alpha": 0.5
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Output scale 0.5x (high, silent)"
+    },
+    {
+      "config_id": "out_noise_hi_s42",
+      "fault_id": "E12.3_hi",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "noise_std": 0.1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Output noise 0.1 (high, silent)"
+    },
+    {
+      "config_id": "out_noise_hi_s123",
+      "fault_id": "E12.3_hi",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "noise_std": 0.1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Output noise 0.1 (high, silent)"
+    },
+    {
+      "config_id": "pos_missing_s42",
+      "fault_id": "E4.0",
+      "fault_name": "missing_positional",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Drop all positional embeddings (silent)"
+    },
+    {
+      "config_id": "pos_missing_s123",
+      "fault_id": "E4.0",
+      "fault_name": "missing_positional",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Drop all positional embeddings (silent)"
+    },
+    {
+      "config_id": "pos_off5_s42",
+      "fault_id": "E4.1_hi",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": {
+        "shift": 5
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Position shift +5 (high, silent)"
+    },
+    {
+      "config_id": "pos_off5_s123",
+      "fault_id": "E4.1_hi",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": {
+        "shift": 5
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Position shift +5 (high, silent)"
+    },
+    {
+      "config_id": "qkv_zero_q_s42",
+      "fault_id": "E2.1",
+      "fault_name": "zero_query",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Zero Q projection (binary, silent)"
+    },
+    {
+      "config_id": "qkv_zero_q_s123",
+      "fault_id": "E2.1",
+      "fault_name": "zero_query",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Zero Q projection (binary, silent)"
+    },
+    {
+      "config_id": "qkv_swap_qk_s42",
+      "fault_id": "E2.4",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Swap Q-K projections (silent)"
+    },
+    {
+      "config_id": "qkv_swap_qk_s123",
+      "fault_id": "E2.4",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Swap Q-K projections (silent)"
+    },
+    {
+      "config_id": "qkv_tie_heads_s42",
+      "fault_id": "E2.5",
+      "fault_name": "tie_heads",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Tie all attention heads (silent)"
+    },
+    {
+      "config_id": "qkv_tie_heads_s123",
+      "fault_id": "E2.5",
+      "fault_name": "tie_heads",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Tie all attention heads (silent)"
+    },
+    {
+      "config_id": "res_scale_hi_s42",
+      "fault_id": "E11.2_hi",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.3,
+        "target": "both"
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Residual scale 0.3x both (high, silent)"
+    },
+    {
+      "config_id": "res_scale_hi_s123",
+      "fault_id": "E11.2_hi",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.3,
+        "target": "both"
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Residual scale 0.3x both (high, silent)"
+    },
+    {
+      "config_id": "res_noise_hi_s42",
+      "fault_id": "E11.3_hi",
+      "fault_name": "residual_noise",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "noise_scale": 0.05
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Residual noise 0.05 (high, silent)"
+    },
+    {
+      "config_id": "res_noise_hi_s123",
+      "fault_id": "E11.3_hi",
+      "fault_name": "residual_noise",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "noise_scale": 0.05
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Residual noise 0.05 (high, silent)"
+    },
+    {
+      "config_id": "score_no_scale_s42",
+      "fault_id": "E3.1",
+      "fault_name": "missing_scaling",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Missing sqrt(dk) scaling (silent)"
+    },
+    {
+      "config_id": "score_no_scale_s123",
+      "fault_id": "E3.1",
+      "fault_name": "missing_scaling",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Missing sqrt(dk) scaling (silent)"
+    },
+    {
+      "config_id": "score_wrong_hi_s42",
+      "fault_id": "E3.2_hi",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 10.0
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Wrong scaling 10x (high severity, silent)"
+    },
+    {
+      "config_id": "score_wrong_hi_s123",
+      "fault_id": "E3.2_hi",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 10.0
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Wrong scaling 10x (high severity, silent)"
+    },
+    {
+      "config_id": "variant_single_head_s42",
+      "fault_id": "E6.1",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Single-head attention (silent)"
+    },
+    {
+      "config_id": "variant_single_head_s123",
+      "fault_id": "E6.1",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Single-head attention (silent)"
+    },
+    {
+      "config_id": "mask_overmask_s42",
+      "fault_id": "E1.2",
+      "fault_name": "over_mask_valid",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "mask_ratio": 0.3
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Over-mask 30% valid tokens (silent)"
+    },
+    {
+      "config_id": "mask_overmask_s123",
+      "fault_id": "E1.2",
+      "fault_name": "over_mask_valid",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "mask_ratio": 0.3
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Over-mask 30% valid tokens (silent)"
+    },
+    {
+      "config_id": "ffn_scale_med_s42",
+      "fault_id": "E9.1_med",
+      "fault_name": "ffn_weight_scaling",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.5
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "FFN weight scale 0.5x (med, silent)"
+    },
+    {
+      "config_id": "ffn_scale_med_s123",
+      "fault_id": "E9.1_med",
+      "fault_name": "ffn_weight_scaling",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.5
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "FFN weight scale 0.5x (med, silent)"
+    },
+    {
+      "config_id": "kernel_dropout_s42",
+      "fault_id": "E5.3",
+      "fault_name": "inconsistent_dropout",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": {
+        "wrong_dropout_p": 0.3
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Wrong dropout 0.3 (silent)"
+    },
+    {
+      "config_id": "kernel_dropout_s123",
+      "fault_id": "E5.3",
+      "fault_name": "inconsistent_dropout",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": {
+        "wrong_dropout_p": 0.3
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Wrong dropout 0.3 (silent)"
+    },
+    {
+      "config_id": "kv_stale_s42",
+      "fault_id": "E7.1",
+      "fault_name": "stale_cache",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "freeze_after": 32
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Stale cache after pos 32 (silent)"
+    },
+    {
+      "config_id": "kv_stale_s123",
+      "fault_id": "E7.1",
+      "fault_name": "stale_cache",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "freeze_after": 32
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Stale cache after pos 32 (silent)"
+    },
+    {
+      "config_id": "kv_offby1_s42",
+      "fault_id": "E7.2",
+      "fault_name": "off_by_one_index",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "offset": 1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "KV cache off-by-one (silent)"
+    },
+    {
+      "config_id": "kv_offby1_s123",
+      "fault_id": "E7.2",
+      "fault_name": "off_by_one_index",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "offset": 1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "KV cache off-by-one (silent)"
+    },
+    {
+      "config_id": "mask_break_lo_s42",
+      "fault_id": "E1.1_lo",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "visibility_ratio": 0.1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Causal leak 10% (low, silent)"
+    },
+    {
+      "config_id": "mask_break_lo_s123",
+      "fault_id": "E1.1_lo",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 2,
+      "severity_params": {
+        "visibility_ratio": 0.1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Causal leak 10% (low, silent)"
+    },
+    {
+      "config_id": "emb_zero_lo_s42",
+      "fault_id": "E8.1_lo",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": null,
+      "severity_params": {
+        "fraction": 0.02
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Zero 2% embeddings (low, silent)"
+    },
+    {
+      "config_id": "emb_zero_lo_s123",
+      "fault_id": "E8.1_lo",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": null,
+      "severity_params": {
+        "fraction": 0.02
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Zero 2% embeddings (low, silent)"
+    },
+    {
+      "config_id": "ffn_scale_lo_s42",
+      "fault_id": "E9.1_lo",
+      "fault_name": "ffn_weight_scaling",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.8
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "FFN weight scale 0.8x (low, silent)"
+    },
+    {
+      "config_id": "ffn_scale_lo_s123",
+      "fault_id": "E9.1_lo",
+      "fault_name": "ffn_weight_scaling",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.8
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "FFN weight scale 0.8x (low, silent)"
+    },
+    {
+      "config_id": "ffn_drop_lo_s42",
+      "fault_id": "E9.2_lo",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "drop_fraction": 0.1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "FFN 10% neuron drop (low, silent)"
+    },
+    {
+      "config_id": "ffn_drop_lo_s123",
+      "fault_id": "E9.2_lo",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": {
+        "drop_fraction": 0.1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "FFN 10% neuron drop (low, silent)"
+    },
+    {
+      "config_id": "kv_leak_lo_s42",
+      "fault_id": "E7.4_lo",
+      "fault_name": "cross_request_leak",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "leak_ratio": 0.3
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Cache leak 30% (low, silent)"
+    },
+    {
+      "config_id": "kv_leak_lo_s123",
+      "fault_id": "E7.4_lo",
+      "fault_name": "cross_request_leak",
+      "category": "kv_cache",
+      "layer_idx": null,
+      "severity_params": {
+        "leak_ratio": 0.3
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Cache leak 30% (low, silent)"
+    },
+    {
+      "config_id": "ln_gamma_lo_s42",
+      "fault_id": "E10.1_lo",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "gamma_scale": 0.8
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "LN gamma 0.8x (low, silent)"
+    },
+    {
+      "config_id": "ln_gamma_lo_s123",
+      "fault_id": "E10.1_lo",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "gamma_scale": 0.8
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "LN gamma 0.8x (low, silent)"
+    },
+    {
+      "config_id": "ln_beta_lo_s42",
+      "fault_id": "E10.2_lo",
+      "fault_name": "ln_beta_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "delta_std": 0.01
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "LN beta noise 0.01 (low, silent)"
+    },
+    {
+      "config_id": "ln_beta_lo_s123",
+      "fault_id": "E10.2_lo",
+      "fault_name": "ln_beta_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "delta_std": 0.01
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "LN beta noise 0.01 (low, silent)"
+    },
+    {
+      "config_id": "out_scale_lo_s42",
+      "fault_id": "E12.1_lo",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "alpha": 0.8
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Output scale 0.8x (low, silent)"
+    },
+    {
+      "config_id": "out_scale_lo_s123",
+      "fault_id": "E12.1_lo",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "alpha": 0.8
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Output scale 0.8x (low, silent)"
+    },
+    {
+      "config_id": "out_noise_lo_s42",
+      "fault_id": "E12.3_lo",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "noise_std": 0.01
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Output noise 0.01 (low, silent)"
+    },
+    {
+      "config_id": "out_noise_lo_s123",
+      "fault_id": "E12.3_lo",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": null,
+      "severity_params": {
+        "noise_std": 0.01
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Output noise 0.01 (low, silent)"
+    },
+    {
+      "config_id": "pos_off1_s42",
+      "fault_id": "E4.1_lo",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": {
+        "shift": 1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Position shift +1 (low, silent)"
+    },
+    {
+      "config_id": "pos_off1_s123",
+      "fault_id": "E4.1_lo",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": null,
+      "severity_params": {
+        "shift": 1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Position shift +1 (low, silent)"
+    },
+    {
+      "config_id": "res_scale_lo_s42",
+      "fault_id": "E11.2_lo",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.8,
+        "target": "ffn"
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Residual scale 0.8x FFN (low, silent)"
+    },
+    {
+      "config_id": "res_scale_lo_s123",
+      "fault_id": "E11.2_lo",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "alpha": 0.8,
+        "target": "ffn"
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Residual scale 0.8x FFN (low, silent)"
+    },
+    {
+      "config_id": "res_noise_lo_s42",
+      "fault_id": "E11.3_lo",
+      "fault_name": "residual_noise",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "noise_scale": 0.005
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Residual noise 0.005 (low, silent)"
+    },
+    {
+      "config_id": "res_noise_lo_s123",
+      "fault_id": "E11.3_lo",
+      "fault_name": "residual_noise",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": {
+        "noise_scale": 0.005
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Residual noise 0.005 (low, silent)"
+    },
+    {
+      "config_id": "score_wrong_lo_s42",
+      "fault_id": "E3.2_lo",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 2.0
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "Wrong scaling 2x (low severity, silent)"
+    },
+    {
+      "config_id": "score_wrong_lo_s123",
+      "fault_id": "E3.2_lo",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 2.0
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "Wrong scaling 2x (low severity, silent)"
+    }
+  ]
+}

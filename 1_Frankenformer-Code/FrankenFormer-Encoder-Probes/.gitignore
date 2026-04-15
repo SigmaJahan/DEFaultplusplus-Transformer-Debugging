@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+results/
+*.h5
+*.db
+hf-cache/
+CC-logs/
+venv/
+.env
+*.egg-info/
+dist/
+build/

@@ -1,165 +1,48 @@
-# Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers
+# DEFault++ Transformer Debugging Workspace
 
-NeurIPS 2026 submission — replication package.
+This README is workspace navigation only. The numbered top-level directories are intentional: the active DEFault++ implementation lives in `7_DEFaultpp-code`, while the mutation data, manuscript, baselines, benchmarks, and user-study materials live alongside it.
 
-## Problem
+Research and reproduction usage live in [`7_DEFaultpp-code/README.md`](7_DEFaultpp-code/README.md). The runtime-v1 contract lives in [`docs/runtime_v1_contract.md`](docs/runtime_v1_contract.md). Runtime product architecture lives in [`7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md`](7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md).
 
-Transformer models can contain subtle implementation faults — bugs in attention computation, layer normalization, positional encoding, etc. — that produce models which train and run but silently underperform. Diagnosing *which specific bug* caused a failure is hard because (a) there are dozens of possible root causes, (b) many root causes produce similar symptoms, and (c) faults propagate across interconnected components.
+## Workspace Layout
 
-## Our Approach
+- `1_Frankenformer-Code/`: upstream FrankenFormer encoder/decoder probe code
+- `2_Frakenformer-DEFaultpp-Manuscript/`: manuscript sources and figures
+- `3_Mutation-Data-from-Frakenformer/`: tracked mutation datasets used by DEFault++
+- `4_Baseline-comparison_with_defaultpp/`: baseline comparison scripts
+- `5_Benchmarks-realworld_defaultpp/`: real-world benchmark cases and metadata
+- `6_User-study-defaultpp/`: user-study assets
+- `7_DEFaultpp-code/`: active DEFault++ package, experiments, and tests
+- `results/`: generated outputs only; ignored by Git
 
-We decompose fault diagnosis into three hierarchical stages:
+## Document Roles
 
-```
-Stage 1                    Stage 2                     Stage 3
-Fault Detection     ->     Fault Categorization  ->    Root-Cause Diagnosis
-Is something wrong?        Which subsystem?            Which exact bug?
-(clean vs faulty)          (e.g., qkv, ffn, ln)       (e.g., zero_query)
-```
-
-### Three Contributions
-
-1. **Hierarchical Diagnosis Framework** — Decompose flat multi-class classification (38–40 root causes) into three stages with stage-specific losses, reducing effective classification difficulty at each level.
-
-2. **Intra-Family Contrastive Loss** — Pull embeddings of the same root cause together and push apart embeddings of different root causes within each fault family, targeting the hardest distinctions.
-
-3. **FPG-Based Explainability** — Every diagnosis comes with a built-in explanation via group-structured embeddings aligned to Fault Propagation Graph (FPG) nodes. Distance to each root-cause prototype decomposes by transformer component.
+- `2_Frakenformer-DEFaultpp-Manuscript/Chapter_7_8.pdf`: scientific source of truth for the taxonomy, grouped diagnosis design, and benchmark construction.
+- `docs/runtime_v1_contract.md`: normative runtime-v1 contract and document-precedence reference.
+- `7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md`: runtime/product architecture source of truth.
+- `7_DEFaultpp-code/Plan.md`: subordinate implementation backlog and test bank.
+- `7_DEFaultpp-code/README.md`: canonical research/reproduction README for the current artifact.
+- `7_DEFaultpp-code/features.md`: runtime feature reference derived from the runtime-v1 contract.
 
 ## Setup
-
-### 1. Create virtual environment
 
 ```bash
 bash scripts/setup.sh
 source .venv/bin/activate
 ```
 
-Or manually:
+The environment is created at the repository root and installs the editable package from `7_DEFaultpp-code`.
+
+## Common Commands
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-### 2. Add data files
-
-Place the 4 required CSV files in `data/`. See [`data/README.md`](data/README.md) for file descriptions, checksums, and sources.
-
-```bash
-make data-check  # verify all files are present
-```
-
-## Reproduction
-
-### Quick smoke test (1 epoch)
-
-```bash
-python hierarchical_graph_category_rootcause/train.py --arch encoder --epochs 1
-```
-
-### Full experiments
-
-```bash
-# Full training (both architectures, full method)
+make data-check
 make train
-
-# All 4 ablation variants x 2 architectures x 5 folds
 make ablation
-
-# All baselines (DEFault-style, DeepFD-style, AutoTrainer-style, DeepDiagnosis-style)
 make baselines
-
-# Everything in sequence
-make all
+pytest 7_DEFaultpp-code/tests/test_phase0_gate.py
 ```
 
-### Individual commands
+## Notes
 
-```bash
-# Train full method on encoder only
-python hierarchical_graph_category_rootcause/train.py --arch encoder
-
-# Run all ablation variants
-python hierarchical_graph_category_rootcause/evaluate.py --arch both
-
-# Run baselines
-python baselines/run_baselines.py --arch both
-```
-
-## Data
-
-Mutation testing benchmarks from the FrankenFormer project. Faults are injected into transformer implementations; the mutation testing framework determines whether each fault was **killed** (detected) or **survived**.
-
-| | Encoder | Decoder |
-|---|---|---|
-| Samples | 9,560 | 9,310 |
-| Clean | 735 (7.7%) | 5,215 (56.0%) |
-| Faulty (killed) | 8,825 (92.3%) | 4,095 (44.0%) |
-| Fault categories | 11 | 12 |
-| Root causes | 38 | 40 |
-
-## Evaluation
-
-| Stage | Metric | What it measures |
-|-------|--------|------------------|
-| 1. Detection | AUROC, F1 | Can we tell clean from faulty? |
-| 2. Categorization | Macro-F1 | Can we identify the fault family? |
-| 3. Root cause (oracle) | Macro-F1 | Given correct family, can we diagnose the root cause? |
-| 3. Root cause (end-to-end) | Macro-F1 | Full pipeline using predicted family |
-
-5-fold GroupKFold (no model/dataset/seed overlap between train and test), 80/20 stratified train/val split within each fold.
-
-## Project Structure
-
-```
-src/
-  data/
-    loader.py                  # CSV loading
-    feature_processor.py       # 6-step processing pipeline
-    feature_groups.py          # Maps features to FPG component groups (13 groups)
-    fundamental_fpg.py         # Fault Propagation Graph (8 deterministic rules)
-  models/
-    group_encoder.py           # GroupEncoder, GraphAggregator, FlatEncoder
-
-hierarchical_graph_category_rootcause/
-    model.py                   # HierarchicalDiagnosisModel + prototypical explainability
-    losses.py                  # Detection, category, root-cause, intra-family contrastive
-    train.py                   # Training with hierarchical logic
-    evaluate.py                # Ablation runner + plot generation
-    posthoc_analysis.py        # Group importance analysis
-    plotting.py                # NeurIPS-quality figures
-
-baselines/
-    run_baselines.py           # DEFault-style, DeepFD-style, AutoTrainer, DeepDiagnosis
-
-configs/base.yaml              # Hyperparameters and data paths
-data/                          # CSV data files (not tracked — see data/README.md)
-results/                       # Experiment outputs (regenerated)
-examples/                      # Motivating example
-docs/                          # Thesis chapter and figures
-```
-
-## Ablation Variants
-
-| Variant | Graph | Contrastive | Tests |
-|---------|-------|-------------|-------|
-| basic | — | — | Hierarchical framework alone |
-| graph | FPG | — | + graph-conditioned encoding |
-| sibling | — | intra-family | + contrastive loss for root-cause separation |
-| full | FPG | intra-family | Complete method |
-
-## Motivating Example
-
-See [`examples/motivating_example.py`](examples/motivating_example.py) — a real QKV fusion bug that silently degrades model quality.
-
-## Citation
-
-```
-@inproceedings{jahan2026hierarchical,
-  title={Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers},
-  author={Jahan, Sigma and others},
-  booktitle={NeurIPS},
-  year={2026}
-}
-```
+The canonical data location is `3_Mutation-Data-from-Frakenformer/`. Do not copy those CSVs into `7_DEFaultpp-code/data`; the experiment code resolves the shared dataset directory directly.

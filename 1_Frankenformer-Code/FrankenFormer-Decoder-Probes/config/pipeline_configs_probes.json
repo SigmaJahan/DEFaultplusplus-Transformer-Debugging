@@ -1,0 +1,673 @@
+{
+  "metadata": {
+    "pipeline_name": "Decoder Structural Probe Re-run (336 stratified)",
+    "generation_date": "2026-03-20",
+    "strategy": "Stratified sample (95% CI, 5% margin from N=2652)",
+    "total_faults": 27,
+    "seeds": [
+      42,
+      123
+    ],
+    "layer_indices": [
+      0,
+      2,
+      5
+    ],
+    "fix_applied": "forward_with_attention for hidden_states/attentions"
+  },
+  "baseline": [
+    {
+      "config_id": "baseline_1",
+      "fault_id": null,
+      "fault_name": "clean_baseline",
+      "category": "baseline",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": true,
+      "seed": 42,
+      "description": "Clean baseline with seed 42"
+    },
+    {
+      "config_id": "baseline_2",
+      "fault_id": null,
+      "fault_name": "clean_baseline",
+      "category": "baseline",
+      "layer_idx": null,
+      "severity_params": null,
+      "is_baseline": true,
+      "seed": 123,
+      "description": "Clean baseline with seed 123"
+    }
+  ],
+  "faults": [
+    {
+      "config_id": 3,
+      "fault_id": "E1.1",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E1.1 (zero_mask) at layer 0, seed=42"
+    },
+    {
+      "config_id": 4,
+      "fault_id": "E1.1",
+      "fault_name": "zero_mask",
+      "category": "masking",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E1.1 (zero_mask) at layer 0, seed=123"
+    },
+    {
+      "config_id": 5,
+      "fault_id": "E1.2",
+      "fault_name": "inverted_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E1.2 (inverse_mask) at layer 2, seed=42"
+    },
+    {
+      "config_id": 6,
+      "fault_id": "E1.2",
+      "fault_name": "inverted_mask",
+      "category": "masking",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E1.2 (inverse_mask) at layer 2, seed=123"
+    },
+    {
+      "config_id": 7,
+      "fault_id": "E12.1",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E12.1 (no_causal_mask) at layer 5, seed=42"
+    },
+    {
+      "config_id": 8,
+      "fault_id": "E12.1",
+      "fault_name": "break_causal_mask",
+      "category": "decoder_masking",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E12.1 (no_causal_mask) at layer 5, seed=123"
+    },
+    {
+      "config_id": 9,
+      "fault_id": "E2.1",
+      "fault_name": "zero_query",
+      "category": "qkv",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E2.1 (zero_query) at layer 0, seed=42"
+    },
+    {
+      "config_id": 10,
+      "fault_id": "E2.1",
+      "fault_name": "zero_query",
+      "category": "qkv",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E2.1 (zero_query) at layer 0, seed=123"
+    },
+    {
+      "config_id": 11,
+      "fault_id": "E2.3",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E2.3 (swap_key_value) at layer 2, seed=42"
+    },
+    {
+      "config_id": 12,
+      "fault_id": "E2.3",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E2.3 (swap_key_value) at layer 2, seed=123"
+    },
+    {
+      "config_id": 13,
+      "fault_id": "E2.5",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E2.5 (swap_q_k) at layer 5, seed=42"
+    },
+    {
+      "config_id": 14,
+      "fault_id": "E2.5",
+      "fault_name": "swapped_qk",
+      "category": "qkv",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E2.5 (swap_q_k) at layer 5, seed=123"
+    },
+    {
+      "config_id": 15,
+      "fault_id": "E3.1",
+      "fault_name": "missing_scaling",
+      "category": "score",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E3.1 (missing_scaling) at layer 0, seed=42"
+    },
+    {
+      "config_id": 16,
+      "fault_id": "E3.1",
+      "fault_name": "missing_scaling",
+      "category": "score",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E3.1 (missing_scaling) at layer 0, seed=123"
+    },
+    {
+      "config_id": 17,
+      "fault_id": "E3.2",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 10.0
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E3.2 (wrong_scaling) at layer 2, scale_factor=10.0, seed=42"
+    },
+    {
+      "config_id": 18,
+      "fault_id": "E3.2",
+      "fault_name": "wrong_scaling_factor",
+      "category": "score",
+      "layer_idx": 2,
+      "severity_params": {
+        "scale_factor": 10.0
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E3.2 (wrong_scaling) at layer 2, scale_factor=10.0, seed=123"
+    },
+    {
+      "config_id": 19,
+      "fault_id": "E4.1",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": 0,
+      "severity_params": {
+        "shift": 1
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E4.1 (off_by_one) at layer 0, shift=1, seed=42"
+    },
+    {
+      "config_id": 20,
+      "fault_id": "E4.1",
+      "fault_name": "off_by_one",
+      "category": "positional",
+      "layer_idx": 0,
+      "severity_params": {
+        "shift": 1
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E4.1 (off_by_one) at layer 0, shift=1, seed=123"
+    },
+    {
+      "config_id": 21,
+      "fault_id": "E4.3",
+      "fault_name": "missing_positional",
+      "category": "positional",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E4.3 (zero_positions) at layer 2, seed=42"
+    },
+    {
+      "config_id": 22,
+      "fault_id": "E4.3",
+      "fault_name": "missing_positional",
+      "category": "positional",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E4.3 (zero_positions) at layer 2, seed=123"
+    },
+    {
+      "config_id": 23,
+      "fault_id": "E5.1",
+      "fault_name": "force_unoptimized",
+      "category": "kernel",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E5.1 (force_unoptimized) at layer 0, seed=42"
+    },
+    {
+      "config_id": 24,
+      "fault_id": "E5.1",
+      "fault_name": "force_unoptimized",
+      "category": "kernel",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E5.1 (force_unoptimized) at layer 0, seed=123"
+    },
+    {
+      "config_id": 25,
+      "fault_id": "E5.2",
+      "fault_name": "wrong_layout",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E5.2 (wrong_precision) at layer 2, seed=42"
+    },
+    {
+      "config_id": 26,
+      "fault_id": "E5.2",
+      "fault_name": "wrong_layout",
+      "category": "kernel",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E5.2 (wrong_precision) at layer 2, seed=123"
+    },
+    {
+      "config_id": 27,
+      "fault_id": "E6.1",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E6.1 (head_size_mismatch) at layer 0, seed=42"
+    },
+    {
+      "config_id": 28,
+      "fault_id": "E6.1",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E6.1 (head_size_mismatch) at layer 0, seed=123"
+    },
+    {
+      "config_id": 29,
+      "fault_id": "E6.2",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E6.2 (wrong_head_count) at layer 2, seed=42"
+    },
+    {
+      "config_id": 30,
+      "fault_id": "E6.2",
+      "fault_name": "wrong_variant",
+      "category": "variant",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E6.2 (wrong_head_count) at layer 2, seed=123"
+    },
+    {
+      "config_id": 31,
+      "fault_id": "E7.1",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E7.1 (zero_intermediate) at layer 0, seed=42"
+    },
+    {
+      "config_id": 32,
+      "fault_id": "E7.1",
+      "fault_name": "ffn_neuron_drop",
+      "category": "ffn",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E7.1 (zero_intermediate) at layer 0, seed=123"
+    },
+    {
+      "config_id": 33,
+      "fault_id": "E7.2",
+      "fault_name": "activation_distortion",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E7.2 (wrong_activation) at layer 2, seed=42"
+    },
+    {
+      "config_id": 34,
+      "fault_id": "E7.2",
+      "fault_name": "activation_distortion",
+      "category": "ffn",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E7.2 (wrong_activation) at layer 2, seed=123"
+    },
+    {
+      "config_id": 35,
+      "fault_id": "E8.1",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E8.1 (skip_layernorm) at layer 0, seed=42"
+    },
+    {
+      "config_id": 36,
+      "fault_id": "E8.1",
+      "fault_name": "ln_gamma_fault",
+      "category": "layernorm",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E8.1 (skip_layernorm) at layer 0, seed=123"
+    },
+    {
+      "config_id": 37,
+      "fault_id": "E8.2",
+      "fault_name": "ln_stats_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "epsilon": 1.0
+      },
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E8.2 (wrong_epsilon) at layer 2, epsilon=1.0, seed=42"
+    },
+    {
+      "config_id": 38,
+      "fault_id": "E8.2",
+      "fault_name": "ln_stats_fault",
+      "category": "layernorm",
+      "layer_idx": 2,
+      "severity_params": {
+        "epsilon": 1.0
+      },
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E8.2 (wrong_epsilon) at layer 2, epsilon=1.0, seed=123"
+    },
+    {
+      "config_id": 39,
+      "fault_id": "E9.1",
+      "fault_name": "residual_drop",
+      "category": "residual",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E9.1 (skip_residual) at layer 0, seed=42"
+    },
+    {
+      "config_id": 40,
+      "fault_id": "E9.1",
+      "fault_name": "residual_drop",
+      "category": "residual",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E9.1 (skip_residual) at layer 0, seed=123"
+    },
+    {
+      "config_id": 41,
+      "fault_id": "E9.2",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E9.2 (double_residual) at layer 2, seed=42"
+    },
+    {
+      "config_id": 42,
+      "fault_id": "E9.2",
+      "fault_name": "residual_scale",
+      "category": "residual",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E9.2 (double_residual) at layer 2, seed=123"
+    },
+    {
+      "config_id": 43,
+      "fault_id": "E10.1",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E10.1 (zero_embeddings) at layer 0, seed=42"
+    },
+    {
+      "config_id": 44,
+      "fault_id": "E10.1",
+      "fault_name": "embedding_zero",
+      "category": "embedding",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E10.1 (zero_embeddings) at layer 0, seed=123"
+    },
+    {
+      "config_id": 45,
+      "fault_id": "E10.2",
+      "fault_name": "embedding_swap",
+      "category": "embedding",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E10.2 (random_embeddings) at layer 2, seed=42"
+    },
+    {
+      "config_id": 46,
+      "fault_id": "E10.2",
+      "fault_name": "embedding_swap",
+      "category": "embedding",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E10.2 (random_embeddings) at layer 2, seed=123"
+    },
+    {
+      "config_id": 47,
+      "fault_id": "E11.1",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E11.1 (zero_output_proj) at layer 0, seed=42"
+    },
+    {
+      "config_id": 48,
+      "fault_id": "E11.1",
+      "fault_name": "out_scale",
+      "category": "output",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E11.1 (zero_output_proj) at layer 0, seed=123"
+    },
+    {
+      "config_id": 49,
+      "fault_id": "E11.2",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E11.2 (wrong_output_bias) at layer 2, seed=42"
+    },
+    {
+      "config_id": 50,
+      "fault_id": "E11.2",
+      "fault_name": "out_noise",
+      "category": "output",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E11.2 (wrong_output_bias) at layer 2, seed=123"
+    },
+    {
+      "config_id": 51,
+      "fault_id": "E13.1",
+      "fault_name": "stale_cache",
+      "category": "kv_cache",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E13.1 (stale_cache) at layer 0, seed=42"
+    },
+    {
+      "config_id": 52,
+      "fault_id": "E13.1",
+      "fault_name": "stale_cache",
+      "category": "kv_cache",
+      "layer_idx": 0,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E13.1 (stale_cache) at layer 0, seed=123"
+    },
+    {
+      "config_id": 53,
+      "fault_id": "E13.2",
+      "fault_name": "off_by_one_index",
+      "category": "kv_cache",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E13.2 (corrupted_cache) at layer 2, seed=42"
+    },
+    {
+      "config_id": 54,
+      "fault_id": "E13.2",
+      "fault_name": "off_by_one_index",
+      "category": "kv_cache",
+      "layer_idx": 2,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E13.2 (corrupted_cache) at layer 2, seed=123"
+    },
+    {
+      "config_id": 55,
+      "fault_id": "E13.3",
+      "fault_name": "truncated_cache",
+      "category": "kv_cache",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 42,
+      "description": "E13.3 (truncated_cache) at layer 5, seed=42"
+    },
+    {
+      "config_id": 56,
+      "fault_id": "E13.3",
+      "fault_name": "truncated_cache",
+      "category": "kv_cache",
+      "layer_idx": 5,
+      "severity_params": null,
+      "is_baseline": false,
+      "seed": 123,
+      "description": "E13.3 (truncated_cache) at layer 5, seed=123"
+    }
+  ],
+  "summary": {
+    "total_configurations": 56,
+    "baseline_configurations": 2,
+    "fault_configurations": 54,
+    "per_pair_total": 56,
+    "n_model_dataset_pairs": 6,
+    "grand_total_across_pairs": 336,
+    "configurations_by_category": {
+      "masking": 4,
+      "decoder_masking": 2,
+      "qkv": 6,
+      "score": 4,
+      "positional": 4,
+      "kernel": 4,
+      "variant": 4,
+      "ffn": 4,
+      "layernorm": 4,
+      "residual": 4,
+      "embedding": 4,
+      "output": 4,
+      "kv_cache": 6
+    }
+  }
+}
