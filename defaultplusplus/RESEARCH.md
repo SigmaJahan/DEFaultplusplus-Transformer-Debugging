@@ -649,7 +649,7 @@ Apache-2.0 (`LICENSE`).
 @inproceedings{jahan2026hierarchical,
   title={Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers},
   author={Jahan, Sigma and others},
-  booktitle={NeurIPS},
+  booktitle={TBD},
   year={2026}
 }
 ```
