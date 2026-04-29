@@ -165,6 +165,10 @@ class FeatureExtractor(AbstractContextManager):
 
         self.collector = MetricCollector(self.inspector, self.config)
 
+        # Install sublayer-boundary hooks now so subsequent forward passes
+        # populate the capture dict in time for ``step``.
+        self.collector.sublayer_capture.install()
+
         self.step_history: list[dict[str, float]] = []
         self.feature_vector: Optional[dict[str, float]] = None
         self._last_step_time: Optional[float] = None
@@ -328,6 +332,7 @@ class FeatureExtractor(AbstractContextManager):
     def reset(self) -> None:
         """Discard all collected state so the extractor can be reused."""
         self.collector.reset()
+        self.collector.sublayer_capture.install()
         self.step_history.clear()
         self.feature_vector = None
         self._last_step_time = None
@@ -347,6 +352,11 @@ class FeatureExtractor(AbstractContextManager):
             except Exception:
                 logger.exception("FeatureExtractor.finalize raised during __exit__")
         self._closed = True
+        # Always tear down the sublayer hooks so the model is left clean.
+        try:
+            self.collector.sublayer_capture.remove()
+        except Exception:  # pragma: no cover - defensive
+            logger.exception("FeatureExtractor: sublayer_capture.remove() failed")
         return False  # do not suppress exceptions
 
     # ── Trace adapter ─────────────────────────────────────────────────────

@@ -40,6 +40,7 @@ class AttentionMetrics(MetricModule):
         hidden_states: Any = None,
         attention_mask: Optional[torch.Tensor] = None,
         input_ids: Optional[torch.Tensor] = None,
+        sublayer_capture: Any = None,
         **kwargs,
     ) -> Dict[str, float]:
         if attention_weights is None:
@@ -48,6 +49,7 @@ class AttentionMetrics(MetricModule):
         attentions = attention_weights if isinstance(attention_weights, (list, tuple)) else [attention_weights]
         sample_layers = self.inspector.get_sampled_layer_indices()
         metrics: Dict[str, float] = {}
+        self._sublayer_capture = sublayer_capture
 
         # Per-layer metrics with layer prefix
         alias_accum = {
@@ -56,6 +58,7 @@ class AttentionMetrics(MetricModule):
             'pre_softmax_mean': [], 'pre_softmax_var': [],
             'pre_softmax_skew': [], 'pre_softmax_kurt': [],
             'head_sim_mean': [], 'head_sim_max': [],
+            'qkv_qk': [], 'qkv_qv': [], 'qkv_kv': [],
         }
 
         for layer_idx in sample_layers:
@@ -100,6 +103,12 @@ class AttentionMetrics(MetricModule):
                 alias_accum['head_sim_mean'].append(lm['head_similarity_mean'])
             if 'head_similarity_max' in lm:
                 alias_accum['head_sim_max'].append(lm['head_similarity_max'])
+            if 'qkv_alignment_qk_cos_mean' in lm:
+                alias_accum['qkv_qk'].append(lm['qkv_alignment_qk_cos_mean'])
+            if 'qkv_alignment_qv_cos_mean' in lm:
+                alias_accum['qkv_qv'].append(lm['qkv_alignment_qv_cos_mean'])
+            if 'qkv_alignment_kv_cos_mean' in lm:
+                alias_accum['qkv_kv'].append(lm['qkv_alignment_kv_cos_mean'])
 
         # Global aliases (aggregated across sampled layers)
         def _mean(vals):
@@ -117,6 +126,9 @@ class AttentionMetrics(MetricModule):
         metrics['pre_softmax_score_kurt'] = _mean(alias_accum['pre_softmax_kurt'])
         metrics['head_similarity_mean'] = max(alias_accum['head_sim_mean']) if alias_accum['head_sim_mean'] else 0.0
         metrics['head_similarity_max'] = max(alias_accum['head_sim_max']) if alias_accum['head_sim_max'] else 0.0
+        metrics['qkv_alignment_qk_cos_mean'] = _mean(alias_accum['qkv_qk'])
+        metrics['qkv_alignment_qv_cos_mean'] = _mean(alias_accum['qkv_qv'])
+        metrics['qkv_alignment_kv_cos_mean'] = _mean(alias_accum['qkv_kv'])
 
         return metrics
 
@@ -195,9 +207,23 @@ class AttentionMetrics(MetricModule):
         metrics['attention_score_var'] = float(score_proxy.var().item())
         metrics['attention_score_skew'] = float(_safe_skew(score_proxy.view(-1).cpu().numpy()))
 
-        # Pre-softmax stats
-        pre_stats = self._compute_pre_softmax_stats(model, layer_idx, layer_input, attention_mask)
+        # Pre-softmax stats: prefer captured Q/K from sublayer hooks
+        # (exact); fall back to recomputing the projections on the
+        # layer input (approximate).
+        cap = getattr(self, "_sublayer_capture", None)
+        pre_stats = self._compute_pre_softmax_stats_from_capture(
+            cap, layer_idx, attention_mask
+        )
+        if not pre_stats:
+            pre_stats = self._compute_pre_softmax_stats(
+                model, layer_idx, layer_input, attention_mask
+            )
         metrics.update(pre_stats)
+
+        # QKV alignment cosines: only available when Q, K, V are captured
+        # post-projection by the sublayer hooks. Emits three direct
+        # cosine-similarity statistics per sampled layer.
+        metrics.update(self._compute_qkv_alignment(cap, layer_idx))
 
         return metrics
 
@@ -352,3 +378,117 @@ class AttentionMetrics(MetricModule):
                 'pre_softmax_score_skew': float(_safe_skew(scores.numpy())),
                 'pre_softmax_score_kurt': float(_safe_kurtosis(scores.numpy())),
             }
+
+    def _compute_pre_softmax_stats_from_capture(
+        self,
+        sublayer_capture: Any,
+        layer_idx: int,
+        attention_mask: Optional[torch.Tensor],
+    ) -> Dict[str, float]:
+        """Compute pre-softmax score stats from captured Q and K tensors."""
+        if sublayer_capture is None or not getattr(sublayer_capture, "installed", False):
+            return {}
+        q = sublayer_capture.get(layer_idx, "q")
+        k = sublayer_capture.get(layer_idx, "k")
+        if q is None or k is None:
+            return {}
+
+        try:
+            q_h, k_h = self._reshape_to_heads(q), self._reshape_to_heads(k)
+        except Exception:
+            return {}
+        if q_h is None or k_h is None:
+            return {}
+
+        with torch.no_grad():
+            dim_per_head = q_h.size(-1)
+            scores = torch.matmul(q_h, k_h.transpose(-1, -2)) / math.sqrt(max(dim_per_head, 1))
+
+            if attention_mask is not None and attention_mask.dim() == 2:
+                attn_mask = attention_mask.float().to(scores.device)
+                key_m = attn_mask.unsqueeze(1).unsqueeze(2)
+                query_m = attn_mask.unsqueeze(1).unsqueeze(-1)
+                valid_mask = (key_m * query_m).to(dtype=torch.bool)
+                if valid_mask.sum() == 0:
+                    return {}
+                scores = scores.masked_select(valid_mask)
+            else:
+                scores = scores.reshape(-1)
+
+            if scores.numel() == 0:
+                return {}
+
+            arr = scores.detach().cpu().float()
+            return {
+                'pre_softmax_score_mean': float(arr.mean().item()),
+                'pre_softmax_score_var': float(arr.var(unbiased=False).item()),
+                'pre_softmax_score_skew': float(_safe_skew(arr.numpy())),
+                'pre_softmax_score_kurt': float(_safe_kurtosis(arr.numpy())),
+            }
+
+    def _compute_qkv_alignment(
+        self,
+        sublayer_capture: Any,
+        layer_idx: int,
+    ) -> Dict[str, float]:
+        """Direct Q-K, Q-V, K-V cosine-similarity stats (T13).
+
+        Reads post-projection Q, K, V tensors from the attention sublayer
+        hooks and reports three head-averaged cosine values per layer.
+        Returns an empty dict if any of Q/K/V was not captured.
+        """
+        if sublayer_capture is None or not getattr(sublayer_capture, "installed", False):
+            return {}
+        q = sublayer_capture.get(layer_idx, "q")
+        k = sublayer_capture.get(layer_idx, "k")
+        v = sublayer_capture.get(layer_idx, "v")
+        if q is None or k is None or v is None:
+            return {}
+
+        try:
+            q_h = self._reshape_to_heads(q)
+            k_h = self._reshape_to_heads(k)
+            v_h = self._reshape_to_heads(v)
+        except Exception:
+            return {}
+        if q_h is None or k_h is None or v_h is None:
+            return {}
+
+        # Cosine similarity along the per-head feature dim, averaged over
+        # batch / heads / sequence positions.
+        def _mean_cos(a: torch.Tensor, b: torch.Tensor) -> float:
+            sim = F.cosine_similarity(a, b, dim=-1)
+            sim = torch.clamp(sim, -1.0, 1.0)
+            return float(sim.mean().item())
+
+        with torch.no_grad():
+            qk = _mean_cos(q_h, k_h)
+            qv = _mean_cos(q_h, v_h)
+            kv = _mean_cos(k_h, v_h)
+
+        return {
+            'qkv_alignment_qk_cos_mean': qk,
+            'qkv_alignment_qv_cos_mean': qv,
+            'qkv_alignment_kv_cos_mean': kv,
+        }
+
+    def _reshape_to_heads(self, tensor: torch.Tensor) -> Optional[torch.Tensor]:
+        """Return ``tensor`` reshaped to ``(batch, heads, seq, head_dim)``.
+
+        Accepts a captured projection output of shape ``(batch, seq, hidden)``
+        or already-shaped ``(batch, heads, seq, head_dim)``.
+        """
+        if tensor is None:
+            return None
+        n_heads = self.inspector.num_heads or 1
+        if tensor.dim() == 4:
+            return tensor.detach().float()
+        if tensor.dim() == 3:
+            batch_size, seq_len, hidden = tensor.shape
+            if hidden % n_heads != 0:
+                return None
+            head_dim = hidden // n_heads
+            return tensor.detach().float().reshape(
+                batch_size, seq_len, n_heads, head_dim
+            ).transpose(1, 2)
+        return None

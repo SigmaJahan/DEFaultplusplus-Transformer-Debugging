@@ -19,8 +19,10 @@ from .feature_construction import (
     LayerInternalTrace,
     StepTrace,
     TrainingTrace,
+    assert_feature_dim_invariants,
     build_feature_vector,
     build_paired_feature_vector,
+    expected_feature_dim,
 )
 from .inspector import ModelInspector
 
@@ -34,6 +36,8 @@ __all__ = [
     "LayerInternalTrace",
     "StepTrace",
     "EpochTrace",
+    "assert_feature_dim_invariants",
+    "expected_feature_dim",
     "build_feature_vector",
     "build_paired_feature_vector",
 ]

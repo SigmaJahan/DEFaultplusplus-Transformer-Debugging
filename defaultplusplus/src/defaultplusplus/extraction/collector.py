@@ -15,6 +15,7 @@ import torch
 
 from .inspector import ModelInspector
 from .aggregator import EpochAggregator, RunningMetrics, compute_window_features
+from .sublayer_capture import SublayerCapture
 from .metrics.training import TrainingMetrics
 from .metrics.gradient import GradientMetrics
 from .metrics.attention import AttentionMetrics
@@ -35,6 +36,13 @@ class MetricCollector:
     ):
         self.inspector = inspector
         self.config = config or ExtractionConfig()
+
+        # Sublayer-boundary capture: forward hooks on FFN/LN/attn modules
+        # plus the Q/K/V projections feed exact-tap tensors into
+        # StructuralMetrics and AttentionMetrics. Installed lazily on the
+        # first ``collect_step`` call so the constructor stays cheap and
+        # standalone metric-module tests keep working.
+        self.sublayer_capture = SublayerCapture(inspector)
 
         # Instantiate metric modules
         self._modules = [
@@ -84,7 +92,7 @@ class MetricCollector:
             labels=labels, attention_weights=attention_weights,
             hidden_states=hidden_states, attention_mask=attention_mask,
             input_ids=input_ids, batch_idx=batch_idx, epoch=epoch,
-            step_time=step_time,
+            step_time=step_time, sublayer_capture=self.sublayer_capture,
         )
 
         metrics: Dict[str, float] = {}
@@ -113,6 +121,9 @@ class MetricCollector:
         metrics['epoch'] = epoch
 
         self.epoch_aggregator.update(metrics)
+        # Captures from this forward have been consumed; drop refs so the
+        # next step starts from a clean slate.
+        self.sublayer_capture.clear()
         return metrics
 
     def finalize_epoch(self, epoch_idx: int) -> Dict[str, float]:
@@ -180,3 +191,5 @@ class MetricCollector:
         self.validation_metric_history = defaultdict(list)
         self.batch_counter = 0
         self.running_metrics.reset()
+        # Tear down hooks; ``FeatureExtractor`` reinstalls them on reuse.
+        self.sublayer_capture.remove()

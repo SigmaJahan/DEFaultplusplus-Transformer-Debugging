@@ -152,31 +152,35 @@ is sampled using the runtime inspector strategy.
 | `L{layer_idx}_head_similarity_mean` / `..._std` / `..._max` | Head-pattern similarity | both | `exact` | `runtime_v1` |
 | `L{layer_idx}_positional_recv_mean` / `..._var` / `..._skew` / `..._early` / `..._mid` / `..._late` / `..._mid_over_early` / `..._late_over_early` | Positional receiving profile from attention maps | both | `exact` | `runtime_v1` |
 | `L{layer_idx}_attention_score_var` / `..._score_skew` | Log-prob proxy for score-shape behavior | both | `approximate` | `runtime_v1` |
-| `L{layer_idx}_pre_softmax_score_mean` / `..._var` / `..._skew` / `..._kurt` | Reconstructed QK score statistics | both | `reconstructed` | `runtime_v1` |
-| Global aliases: `attention_entropy`, `attention_entropy_mean`, `mass_pad`, `mass_leak`, `cross_example_attention`, `attention_mass_future`, `pre_softmax_score_mean`, `pre_softmax_score_var`, `pre_softmax_score_skew`, `pre_softmax_score_kurt`, `head_similarity_mean`, `head_similarity_max` | Aggregated across sampled layers | both | `exact` (`pre_softmax_*` = `reconstructed`) | `runtime_v1` |
+| `L{layer_idx}_pre_softmax_score_mean` / `..._var` / `..._skew` / `..._kurt` | QK score statistics, computed from captured Q/K projection outputs | both | `exact` | `runtime_v1` |
+| `L{layer_idx}_qkv_alignment_qk_cos_mean` / `..._qv_cos_mean` / `..._kv_cos_mean` | Direct Q-K, Q-V, K-V head-averaged cosine similarity from post-projection captures | both | `exact` | `runtime_v1` |
+| Global aliases: `attention_entropy`, `attention_entropy_mean`, `mass_pad`, `mass_leak`, `cross_example_attention`, `attention_mass_future`, `pre_softmax_score_mean`, `pre_softmax_score_var`, `pre_softmax_score_skew`, `pre_softmax_score_kurt`, `head_similarity_mean`, `head_similarity_max`, `qkv_alignment_qk_cos_mean`, `qkv_alignment_qv_cos_mean`, `qkv_alignment_kv_cos_mean` | Aggregated across sampled layers | both | `exact` | `runtime_v1` |
 
 ### 2.4 QKV alignment
 
 | Metric | Meaning | Availability | Status | Scope |
 |---|---|---|---|---|
-| `qkv_alignment_*` | Dedicated QKV alignment metrics | both | `not_available` | `post_v1` |
+| `qkv_alignment_qk_cos_mean` / `qkv_alignment_qv_cos_mean` / `qkv_alignment_kv_cos_mean` | Head-averaged cosine similarity between captured post-projection Q, K, V tensors | both | `exact` | `runtime_v1` |
 
-The runtime surface in v1 includes QKV-related parameter grouping
-(`layer{i}_qkv`) and reconstructed `pre_softmax_score_*` only. No
-dedicated `qkv_alignment_*` keys are frozen yet.
+QKV alignment is wired through the sublayer hooks installed by
+`SublayerCapture` (`extraction/sublayer_capture.py`). The post-projection
+Q, K, V tensors are tapped via forward hooks on the per-layer
+projection ``nn.Linear``\\s; per-layer cosines are emitted with the
+`L{layer_idx}_qkv_alignment_*` prefix and rolled up into the three
+global aliases above.
 
 ### 2.5 Structural, FFN, residual, LayerNorm behavior
 
 | Metric or pattern | Meaning | Availability | Status | Scope |
 |---|---|---|---|---|
-| `ffn_delta_l{layer_idx}_mean` | Hidden-state delta across adjacent layers | both | `reconstructed` | `runtime_v1` |
-| `residual_cos_l{layer_idx}_mean` | Cosine similarity between adjacent layer states | both | `reconstructed` | `runtime_v1` |
-| `ffn_var_ratio_l{layer_idx}` | Output / input variance ratio proxy | both | `reconstructed` | `runtime_v1` |
-| `ln_std_l{layer_idx}_mean` | Layer output std proxy | both | `reconstructed` | `runtime_v1` |
-| `ln_mean_abs_l{layer_idx}_mean` | Layer output mean-absolute proxy | both | `reconstructed` | `runtime_v1` |
-| `ffn_active_dim_frac_l{layer_idx}` | Fraction of active output dimensions | both | `reconstructed` | `runtime_v1` |
-| `ffn_out_skew_l{layer_idx}` | Output skewness proxy | both | `reconstructed` | `runtime_v1` |
-| Global aggregates: `ffn_delta_mean`, `residual_cos_mean`, `ffn_var_ratio_mean`, `ln_std_mean`, `ln_mean_abs_mean`, `ffn_active_dim_frac_mean`, `ffn_out_skew_mean` | Aggregated across layerwise structural proxies | both | `reconstructed` | `runtime_v1` |
+| `ffn_delta_l{layer_idx}_mean` | Norm of FFN-sublayer-induced hidden-state delta (FFN output minus FFN input, captured via sublayer hooks) | both | `exact` | `runtime_v1` |
+| `residual_cos_l{layer_idx}_mean` | Cosine similarity between FFN-sublayer input and output | both | `exact` | `runtime_v1` |
+| `ffn_var_ratio_l{layer_idx}` | FFN output / input variance ratio | both | `exact` | `runtime_v1` |
+| `ln_std_l{layer_idx}_mean` | Standard deviation of LayerNorm output, read from the per-layer LN forward hook | both | `exact` | `runtime_v1` |
+| `ln_mean_abs_l{layer_idx}_mean` | Mean absolute value of LayerNorm output, read from the per-layer LN forward hook | both | `exact` | `runtime_v1` |
+| `ffn_active_dim_frac_l{layer_idx}` | Fraction of active FFN-output dimensions (variance > threshold) | both | `exact` | `runtime_v1` |
+| `ffn_out_skew_l{layer_idx}` | FFN-output skewness | both | `exact` | `runtime_v1` |
+| Global aggregates: `ffn_delta_mean`, `residual_cos_mean`, `ffn_var_ratio_mean`, `ln_std_mean`, `ln_mean_abs_mean`, `ffn_active_dim_frac_mean`, `ffn_out_skew_mean` | Aggregated across layerwise structural metrics | both | `exact` | `runtime_v1` |
 | `embedding_norm_mean`, `embedding_norm_std` | Token embedding norm statistics | both | `exact` | `runtime_v1` |
 | `h1_delta_norm_mean` | First-layer hidden drift | both | `reconstructed` | `runtime_v1` |
 
@@ -219,23 +223,14 @@ schema above (with the corresponding metric promoted from
 
 ### 3.1 Schema gaps to close
 
-- **QKV alignment metrics (`qkv_alignment_*`)** — currently
-  `not_available` / `post_v1`. The runtime surface needs dedicated
-  Q-K, Q-V, K-V cosine-similarity outputs. Gap: hook the post-projection
-  Q, K, V tensors at the targeted layer set rather than reconstructing
-  them after the fact.
 - **`cache_nll_divergence`** — currently `not_available` / `post_v1`.
   Requires a fresh-vs-cached forward at sampled generation steps.
-- **Structural proxies promoted to `exact`** — `ffn_delta_*`,
-  `residual_cos_*`, `ffn_var_ratio_*`, `ln_std_*`, `ln_mean_abs_*`,
-  `ffn_active_dim_frac_*`, `ffn_out_skew_*` are all currently
-  `reconstructed` from adjacent hidden states. Promoting them to
-  `exact` requires sublayer-boundary hooks rather than hidden-state
-  differencing. Tracking issue: add `pre_ffn` / `post_ffn` / `pre_ln`
-  / `post_ln` capture sites in `extraction/inspector.py`.
 - **`L{layer_idx}_attention_score_*`** — currently `approximate`. The
-  log-prob proxy should be replaced by direct pre-softmax score
-  statistics once score capture is wired through the attention hook.
+  log-prob proxy on attention probabilities is still emitted; the
+  exact pre-softmax score statistics are now emitted in parallel via
+  `pre_softmax_score_*` (promoted to `exact` by the sublayer hooks).
+  The legacy `attention_score_*` keys remain `approximate` until
+  consumers migrate.
 
 ### 3.2 Runtime product items
 

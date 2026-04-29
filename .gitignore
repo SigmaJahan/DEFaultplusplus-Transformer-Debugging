@@ -53,3 +53,6 @@ src/defaultplusplus/pretrained/weights/*.pkl
 # Temp staging
 .tmp/
 .0_DEFault-Previous-Work/ 
+evaluation/
+2_Raw-to-Standardized/ 
+data/

@@ -33,6 +33,11 @@ from .operators import (
 )
 from .fault_config import FaultConfiguration, Mutant
 from .injection import FaultInjector, StaticFault, DynamicFault
+from .operator_impls import (
+    get_expected_modules,
+    get_expected_parameter_names,
+    get_injector,
+)
 from .validation import (
     StructuralVerifier,
     sign_flip_permutation_test,
@@ -51,6 +56,9 @@ __all__ = [
     "FaultInjector",
     "StaticFault",
     "DynamicFault",
+    "get_injector",
+    "get_expected_parameter_names",
+    "get_expected_modules",
     "StructuralVerifier",
     "sign_flip_permutation_test",
     "is_killed",

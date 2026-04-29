@@ -105,6 +105,9 @@ Documentation = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debug
 Issues        = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/issues"
 Changelog     = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/CHANGELOG.md"
 
+[project.scripts]
+defaultpp-benchmark = "defaultplusplus.benchmark.cli:main"
+
 # ── setuptools configuration ─────────────────────────────────────────────
 [tool.setuptools]
 include-package-data = true

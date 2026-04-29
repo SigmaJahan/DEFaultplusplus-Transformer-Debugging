@@ -56,6 +56,25 @@ from typing import Iterable
 
 import numpy as np
 
+ARCH_ENCODER = "encoder"
+ARCH_DECODER = "decoder"
+
+A_LAYER = 5
+A_EPOCH = 3
+A_PHASE = 5
+C_INT = {ARCH_ENCODER: 15, ARCH_DECODER: 16}
+C_OPT = 21
+C_TRAIN = {ARCH_ENCODER: 10, ARCH_DECODER: 12}
+C_EVAL = 2
+EXPECTED_FEATURE_DIMS = {
+    arch: A_PHASE * (A_EPOCH * (A_LAYER * C_INT[arch] + C_OPT + C_TRAIN[arch]) + C_EVAL)
+    for arch in (ARCH_ENCODER, ARCH_DECODER)
+}
+STEP_METRIC_COUNTS = {
+    arch: C_OPT + C_TRAIN[arch]
+    for arch in (ARCH_ENCODER, ARCH_DECODER)
+}
+
 
 # ── Per-metric typed traces ──────────────────────────────────────────────
 @dataclass
@@ -119,6 +138,7 @@ class TrainingTrace:
     step_level: dict[str, StepTrace]
     epoch_level: dict[str, EpochTrace]
     epoch_boundaries: Sequence[int]
+    arch: str | None = None
 
 
 # ── Aggregation ──────────────────────────────────────────────────────────
@@ -212,6 +232,35 @@ def aggregate_layer_internal(trace: LayerInternalTrace) -> dict[str, float]:
     }
 
 
+def aggregate_layer_internal_by_step(trace: LayerInternalTrace) -> dict[str, np.ndarray]:
+    """Reduce layer values to five per-step layer-band trajectories."""
+    arr = trace.values
+    n_steps, n_layers = arr.shape
+    early, mid, _late = _band_indices(n_layers)
+
+    if n_steps == 0 or n_layers == 0:
+        zeros = np.zeros(n_steps, dtype=np.float64)
+        return {"early_mean": zeros, "early_std": zeros, "mid_mean": zeros,
+                "mid_std": zeros, "final_layer_value": zeros}
+
+    with np.errstate(invalid="ignore"):
+        early_arr = arr[:, list(early)] if early else np.empty((n_steps, 0))
+        mid_arr = arr[:, list(mid)] if mid else np.empty((n_steps, 0))
+        early_mean = np.nanmean(early_arr, axis=1) if early else np.zeros(n_steps)
+        early_std = np.nanstd(early_arr, axis=1) if early else np.zeros(n_steps)
+        mid_mean = np.nanmean(mid_arr, axis=1) if mid else np.zeros(n_steps)
+        mid_std = np.nanstd(mid_arr, axis=1) if mid else np.zeros(n_steps)
+        final = arr[:, n_layers - 1]
+
+    return {
+        "early_mean": np.nan_to_num(early_mean, nan=0.0),
+        "early_std": np.nan_to_num(early_std, nan=0.0),
+        "mid_mean": np.nan_to_num(mid_mean, nan=0.0),
+        "mid_std": np.nan_to_num(mid_std, nan=0.0),
+        "final_layer_value": np.nan_to_num(final, nan=0.0),
+    }
+
+
 def aggregate_epoch_summary(values: np.ndarray) -> dict[str, float]:
     """Reduce a within-epoch step-level metric slice to three statistics."""
     return {
@@ -240,6 +289,37 @@ def aggregate_training_phase(per_epoch: Sequence[float]) -> dict[str, float]:
     }
 
 
+def expected_feature_dim(arch: str) -> int:
+    """Return the raw pre-filtering feature dimension from Equation 7.19."""
+    _validate_arch(arch)
+    return EXPECTED_FEATURE_DIMS[arch]
+
+
+def assert_feature_dim_invariants(arch: str,
+                                  features: dict[str, float] | None = None) -> int:
+    """Assert Equation 7.19 constants and, optionally, vector length."""
+    _validate_arch(arch)
+    expected = EXPECTED_FEATURE_DIMS[arch]
+    recomputed = A_PHASE * (
+        A_EPOCH * (A_LAYER * C_INT[arch] + C_OPT + C_TRAIN[arch]) + C_EVAL
+    )
+    if expected != recomputed:
+        raise AssertionError(
+            f"Equation 7.19 constants inconsistent for {arch}: "
+            f"{expected} != {recomputed}"
+        )
+    if features is not None and len(features) != expected:
+        raise AssertionError(
+            f"{arch} feature vector has {len(features)} keys; expected {expected}"
+        )
+    return expected
+
+
+def _validate_arch(arch: str) -> None:
+    if arch not in EXPECTED_FEATURE_DIMS:
+        raise ValueError(f"arch must be 'encoder' or 'decoder'; got {arch!r}")
+
+
 # ── Feature builder ──────────────────────────────────────────────────────
 def build_feature_vector(trace: TrainingTrace) -> dict[str, float]:
     """Assemble the fixed-length feature vector from one training trace.
@@ -262,22 +342,19 @@ def build_feature_vector(trace: TrainingTrace) -> dict[str, float]:
     without a column-alignment step.
     """
     out: dict[str, float] = {}
+    boundaries = list(trace.epoch_boundaries)
 
     # Layer-internal metrics.
     for name, t in sorted(trace.layer_internal.items()):
-        layer_stats = aggregate_layer_internal(t)
-        # Treat the layer-band statistics as a step-level signal: at
-        # this point each statistic is one number per step. We then
-        # apply epoch summary + phase summary to each band statistic.
-        # The implementation below is conservative and assumes the
-        # layer aggregation already integrated across steps; if the
-        # caller wants per-step trajectories of band statistics they
-        # should pass the band statistics through as step-level traces.
-        for stat, val in layer_stats.items():
-            out[f"{name}__{stat}"] = val
+        for layer_stat, values in aggregate_layer_internal_by_step(t).items():
+            per_epoch = _summarize_steps_by_epoch(values, boundaries)
+            for epoch_stat in ("epoch_mean", "epoch_std", "epoch_burst_p95"):
+                seq = [es[epoch_stat] for es in per_epoch]
+                phase = aggregate_training_phase(seq)
+                for pstat, pval in phase.items():
+                    out[f"{name}__{layer_stat}__{epoch_stat}__{pstat}"] = pval
 
     # Step-level metrics: epoch summary then training-phase summary.
-    boundaries = list(trace.epoch_boundaries)
     for name, t in sorted(trace.step_level.items()):
         per_epoch_summaries = _summarize_steps_by_epoch(t.values, boundaries)
         # Three sequences (mean, std, burst), one entry per epoch.
@@ -293,6 +370,8 @@ def build_feature_vector(trace: TrainingTrace) -> dict[str, float]:
         for pstat, pval in phase.items():
             out[f"{name}__epoch__{pstat}"] = pval
 
+    if trace.arch is not None:
+        assert_feature_dim_invariants(trace.arch, out)
     return out
 
 

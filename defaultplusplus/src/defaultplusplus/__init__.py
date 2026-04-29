@@ -22,8 +22,10 @@ from ._version import __version__
 from .api import FeatureExtractor
 from .config import ExtractionConfig
 from .extraction.feature_construction import (
+    assert_feature_dim_invariants,
     build_feature_vector,
     build_paired_feature_vector,
+    expected_feature_dim,
 )
 
 
@@ -49,5 +51,7 @@ __all__ = [
     "ExtractionConfig",
     "build_feature_vector",
     "build_paired_feature_vector",
+    "assert_feature_dim_invariants",
+    "expected_feature_dim",
     "__version__",
 ]

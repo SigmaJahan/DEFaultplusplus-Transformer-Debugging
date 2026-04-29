@@ -255,6 +255,50 @@ def test_paired_feature_vector_runs() -> None:
     assert np.abs(deltas).mean() < 5.0  # very loose; just guards against runaway values
 
 
+def _make_schema_trace(arch: str):
+    from src.defaultplusplus.extraction.feature_construction import (
+        C_INT, STEP_METRIC_COUNTS, C_EVAL,
+        TrainingTrace, LayerInternalTrace, StepTrace, EpochTrace,
+    )
+
+    rng = np.random.default_rng(1)
+    n_steps, n_layers, n_epochs = 12, 6, 3
+    layer_internal = {
+        f"int_{i:02d}": LayerInternalTrace(rng.normal(size=(n_steps, n_layers)))
+        for i in range(C_INT[arch])
+    }
+    step_level = {
+        f"step_{i:02d}": StepTrace(rng.normal(size=n_steps))
+        for i in range(STEP_METRIC_COUNTS[arch])
+    }
+    epoch_level = {
+        f"eval_{i:02d}": EpochTrace(rng.normal(size=n_epochs))
+        for i in range(C_EVAL)
+    }
+    return TrainingTrace(
+        layer_internal=layer_internal,
+        step_level=step_level,
+        epoch_level=epoch_level,
+        epoch_boundaries=[4, 8, 12],
+        arch=arch,
+    )
+
+
+def test_feature_dim_invariants() -> None:
+    from src.defaultplusplus.extraction.feature_construction import (
+        assert_feature_dim_invariants,
+        build_feature_vector,
+        expected_feature_dim,
+    )
+
+    enc = build_feature_vector(_make_schema_trace("encoder"))
+    dec = build_feature_vector(_make_schema_trace("decoder"))
+    assert len(enc) == expected_feature_dim("encoder") == 1600
+    assert len(dec) == expected_feature_dim("decoder") == 1705
+    assert_feature_dim_invariants("encoder", enc)
+    assert_feature_dim_invariants("decoder", dec)
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Graph aggregator (Equation 7.22 shape)
 # ─────────────────────────────────────────────────────────────────────────
@@ -350,6 +394,114 @@ def test_operator_catalog() -> None:
     dec = {op.op_id for op in list_operators("decoder")}
     assert "CST" not in enc
     assert "CST" in dec
+
+
+class _OperatorTinySelfAttention(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.query = torch.nn.Linear(4, 4)
+        self.key = torch.nn.Linear(4, 4)
+        self.value = torch.nn.Linear(4, 4)
+
+    def forward(self, x, attention_mask=None, position_ids=None):
+        return self.value(self.key(self.query(x)))
+
+
+class _OperatorTinyAttention(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.self = _OperatorTinySelfAttention()
+
+    def forward(self, x, **kwargs):
+        return self.self(x, **kwargs)
+
+
+class _OperatorTinyBlock(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attention = _OperatorTinyAttention()
+        self.intermediate = torch.nn.Module()
+        self.intermediate.dense = torch.nn.Linear(4, 8)
+        self.output = torch.nn.Module()
+        self.output.dense = torch.nn.Linear(8, 4)
+        self.layernorm = torch.nn.LayerNorm(4)
+        self.activation = torch.nn.GELU()
+
+    def forward(self, x, **kwargs):
+        y = self.attention(x, **kwargs)
+        y = self.output.dense(self.activation(self.intermediate.dense(y)))
+        return self.layernorm(x + y)
+
+
+class _OperatorTinyModel(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.embeddings = torch.nn.Module()
+        self.embeddings.word_embeddings = torch.nn.Embedding(16, 4)
+        self.embeddings.token_type_embeddings = torch.nn.Embedding(2, 4)
+        self.encoder = torch.nn.Module()
+        self.encoder.layer = torch.nn.ModuleList([_OperatorTinyBlock(), _OperatorTinyBlock()])
+        self.lm_head = torch.nn.Linear(4, 16)
+        self.classifier = torch.nn.Linear(4, 2)
+
+    def forward(self, input_ids=None, attention_mask=None, position_ids=None):
+        x = self.embeddings.word_embeddings(input_ids)
+        for block in self.encoder.layer:
+            x = block(x, attention_mask=attention_mask, position_ids=position_ids)
+        return self.lm_head(x)
+
+
+def _state_snapshot(model: torch.nn.Module):
+    return {
+        name: (p.detach().clone(), p.requires_grad)
+        for name, p in model.named_parameters()
+    }, {
+        id(module): getattr(module, "eps", None)
+        for module in model.modules()
+        if hasattr(module, "eps")
+    }
+
+
+def _assert_state_restored(model: torch.nn.Module, snapshot) -> None:
+    params, eps = snapshot
+    for name, p in model.named_parameters():
+        before, requires_grad = params[name]
+        assert torch.allclose(p.detach(), before), f"{name} was not restored"
+        assert p.requires_grad == requires_grad, f"{name}.requires_grad was not restored"
+    for module in model.modules():
+        if id(module) in eps:
+            assert getattr(module, "eps", None) == eps[id(module)]
+
+
+def test_all_operator_injectors_construct_verify_and_restore() -> None:
+    from src.defaultplusplus.deform import (
+        OPERATORS, DynamicFault, StaticFault, StructuralVerifier,
+        get_expected_modules, get_expected_parameter_names, get_injector,
+    )
+
+    verifier = StructuralVerifier()
+    for op_id in OPERATORS:
+        torch.manual_seed(10)
+        model = _OperatorTinyModel()
+        injector = get_injector(op_id)(model)
+        snapshot = _state_snapshot(model)
+
+        if isinstance(injector, StaticFault):
+            expected = get_expected_parameter_names(model, injector)
+            result = verifier.verify_static(model, injector, expected)
+            assert result.ok, f"{op_id}: {result.message}"
+        elif isinstance(injector, DynamicFault):
+            expected_modules = get_expected_modules(model, injector)
+            result = verifier.verify_dynamic(model, injector, expected_modules)
+            assert result.ok, f"{op_id}: {result.message}"
+        else:
+            with injector:
+                pass
+
+        _assert_state_restored(model, snapshot)
+
+    qzq = get_injector("QZQ")(_OperatorTinyModel())
+    assert isinstance(qzq, StaticFault)
 
 
 def test_benchmark_grid_enumerates() -> None:

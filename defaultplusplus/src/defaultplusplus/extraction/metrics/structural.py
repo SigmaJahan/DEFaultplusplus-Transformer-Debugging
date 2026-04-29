@@ -34,18 +34,27 @@ class StructuralMetrics(MetricModule):
         attention_mask: Optional[torch.Tensor] = None,
         input_ids: Optional[torch.Tensor] = None,
         outputs: Any = None,
+        sublayer_capture: Any = None,
         **kwargs,
     ) -> Dict[str, float]:
         metrics: Dict[str, float] = {}
-        if hidden_states is None:
-            return metrics
+
+        # Prefer exact sublayer-boundary captures when available; fall
+        # back to adjacent-hidden-state reconstruction otherwise. The
+        # exact path reads FFN input / output and per-LayerNorm output
+        # straight from forward hooks installed by ``SublayerCapture``.
+        use_capture = (
+            sublayer_capture is not None
+            and getattr(sublayer_capture, "installed", False)
+            and bool(getattr(sublayer_capture, "captures", {}))
+        )
 
         try:
-            hs_list = list(hidden_states)
+            hs_list = list(hidden_states) if hidden_states is not None else []
         except Exception:
-            return metrics
+            hs_list = []
 
-        if len(hs_list) < 2:
+        if not use_capture and len(hs_list) < 2:
             return metrics
 
         eps = 1e-6
@@ -53,12 +62,20 @@ class StructuralMetrics(MetricModule):
         ln_std_means, ln_mean_abs_means = [], []
         active_fracs, skew_vals = [], []
 
-        max_layers = min(self.inspector.num_layers or len(hs_list) - 1, len(hs_list) - 1)
+        if use_capture:
+            n_layers = self.inspector.num_layers or 0
+        else:
+            n_layers = min(self.inspector.num_layers or len(hs_list) - 1,
+                           len(hs_list) - 1)
         probe_tokens = self.ffn_probe_tokens
 
-        for layer_idx in range(max_layers):
-            h_in = hs_list[layer_idx]
-            h_out = hs_list[layer_idx + 1]
+        for layer_idx in range(n_layers):
+            h_in, h_out, ln_out = self._select_tap_tensors(
+                layer_idx=layer_idx,
+                use_capture=use_capture,
+                sublayer_capture=sublayer_capture,
+                hs_list=hs_list,
+            )
             if h_in is None or h_out is None:
                 continue
 
@@ -92,15 +109,22 @@ class StructuralMetrics(MetricModule):
             metrics[f'ffn_var_ratio_l{layer_idx}'] = float(ratio.item())
             var_ratios.append(ratio.item())
 
-            # LN-like stats
-            std_out = torch.sqrt(var_out + eps)
-            ln_std = std_out.mean().item()
-            metrics[f'ln_std_l{layer_idx}_mean'] = float(ln_std)
+            # LN-like stats: prefer the captured LayerNorm output when
+            # available so we report the actual normalized distribution
+            # rather than reconstructing it from FFN-input variance.
+            if ln_out is not None:
+                ln_flat = ln_out.reshape(-1, ln_out.size(-1))
+                if ln_flat.size(0) > probe_tokens:
+                    ln_flat = ln_flat[:probe_tokens]
+                ln_std = float(ln_flat.std(dim=0, unbiased=False).mean().item())
+                ln_mean_abs = float(ln_flat.mean(dim=0).abs().mean().item())
+            else:
+                std_out = torch.sqrt(var_out + eps)
+                ln_std = float(std_out.mean().item())
+                ln_mean_abs = float(flat_out.mean(dim=0).abs().mean().item())
+            metrics[f'ln_std_l{layer_idx}_mean'] = ln_std
             ln_std_means.append(ln_std)
-
-            mean_out = flat_out.mean(dim=0)
-            ln_mean_abs = mean_out.abs().mean().item()
-            metrics[f'ln_mean_abs_l{layer_idx}_mean'] = float(ln_mean_abs)
+            metrics[f'ln_mean_abs_l{layer_idx}_mean'] = ln_mean_abs
             ln_mean_abs_means.append(ln_mean_abs)
 
             # Active dimension fraction
@@ -146,3 +170,32 @@ class StructuralMetrics(MetricModule):
                 metrics['h1_delta_norm_mean'] = float(delta01.mean().item())
 
         return metrics
+
+    def _select_tap_tensors(
+        self,
+        *,
+        layer_idx: int,
+        use_capture: bool,
+        sublayer_capture: Any,
+        hs_list: list,
+    ):
+        """Return ``(h_in, h_out, ln_out)`` for one layer.
+
+        When sublayer captures are available we read FFN-sublayer
+        boundaries directly (``ffn_in`` / ``ffn_out``) and the last
+        captured LayerNorm output for the layer; otherwise we fall back
+        to adjacent hidden states from ``output_hidden_states=True``.
+        """
+        if use_capture:
+            ffn_in = sublayer_capture.get(layer_idx, "ffn_in")
+            ffn_out = sublayer_capture.get(layer_idx, "ffn_out")
+            ln_out = None
+            for ord_idx in range(8):  # arbitrary upper bound; layers carry 1-3 LNs
+                tap = sublayer_capture.get(layer_idx, f"ln{ord_idx}_out")
+                if tap is not None:
+                    ln_out = tap
+            return ffn_in, ffn_out, ln_out
+
+        if layer_idx + 1 >= len(hs_list):
+            return None, None, None
+        return hs_list[layer_idx], hs_list[layer_idx + 1], None

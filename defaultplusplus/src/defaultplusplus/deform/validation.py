@@ -34,6 +34,11 @@ import torch
 import torch.nn as nn
 
 
+def _callable_identity(fn):
+    """Stable identity for bound methods and plain callables."""
+    return (getattr(fn, "__self__", None), getattr(fn, "__func__", fn))
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Structural verifier
 # ─────────────────────────────────────────────────────────────────────────
@@ -108,6 +113,17 @@ class StructuralVerifier:
                     diff_norm=sum(diffs.values()),
                 )
 
+            # A static fault that claims to touch parameters but produced
+            # no diff is a silent no-op. Reject it before the kill test
+            # can mistake an unchanged faulty run for a clean baseline.
+            if expected_param_names and not diffs:
+                return VerificationResult(
+                    ok=False,
+                    message=("Static fault produced no parameter change "
+                             f"despite {len(expected_param_names)} expected "
+                             "target(s)."),
+                )
+
             if expected_severity is not None and diffs:
                 # Compare relative magnitude of the largest change to
                 # ``expected_severity`` within the configured tolerance.
@@ -141,17 +157,17 @@ class StructuralVerifier:
                        expected_modules: Sequence[nn.Module]
                        ) -> VerificationResult:
         """Verify that a dynamic fault wraps only the expected modules."""
-        before_forwards = {id(m): m.forward for m in expected_modules}
+        before_forwards = {id(m): _callable_identity(m.forward) for m in expected_modules}
         # Snapshot forwards across the whole model so we can detect
         # accidental rebinds outside the expected set.
-        all_forwards = {id(m): m.forward for m in model.modules()}
+        all_forwards = {id(m): _callable_identity(m.forward) for m in model.modules()}
 
         with injector:
             wrapped_outside: list[str] = []
             for m in model.modules():
                 if id(m) in before_forwards:
                     continue
-                if all_forwards.get(id(m)) is not m.forward:
+                if all_forwards.get(id(m)) != _callable_identity(m.forward):
                     wrapped_outside.append(m.__class__.__name__)
             if wrapped_outside:
                 return VerificationResult(
@@ -160,7 +176,7 @@ class StructuralVerifier:
                             f"{sorted(set(wrapped_outside))}"))
 
             for m in expected_modules:
-                if before_forwards[id(m)] is m.forward:
+                if before_forwards[id(m)] == _callable_identity(m.forward):
                     return VerificationResult(
                         ok=False,
                         message=("Expected forward to be wrapped on "
@@ -168,7 +184,7 @@ class StructuralVerifier:
 
         # After exit: forwards restored.
         for m in expected_modules:
-            if before_forwards[id(m)] is not m.forward:
+            if before_forwards[id(m)] != _callable_identity(m.forward):
                 return VerificationResult(
                     ok=False,
                     message=(f"Forward not restored on "
