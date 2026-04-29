@@ -1,0 +1,655 @@
+# DEFault++ research runbook
+
+This document is the **researcher's notebook** for DEFault++. It
+covers the end-to-end pipeline, every command, the data flow, where
+each piece of code lives, how to extend the operator catalog or the
+diagnostic model, the Compute Canada workflow, and debugging tips.
+
+It is *not* user-facing. The user-facing PyPI documentation lives in
+[`README.md`](README.md) (package) and [`../README.md`](../README.md)
+(repository root).
+
+The scientific source of truth is [`../DEFault++.pdf`](../DEFault++.pdf).
+The frozen runtime output schema is
+[`../docs/SPEC.md`](../docs/SPEC.md).
+
+---
+
+## 1. Big picture
+
+DEFault++ has four moving parts. All four are in this repository.
+
+```
+       ┌─────────────────────┐                   ┌──────────────────────┐
+       │  DEForm injector    │                   │  Diagnostic model    │
+       │  (defaultplusplus.  │                   │  (hierarchical_      │
+       │   deform)           │                   │   graph_category_    │
+       │                     │                   │   rootcause)         │
+       └──────────┬──────────┘                   └──────────▲───────────┘
+                  │ injects fault                           │ predicts
+                  ▼                                         │
+       ┌─────────────────────┐  paired clean/faulty   ┌─────┴────────────┐
+       │  Fine-tuning runs   │  fine-tuning + matched │  Feature vector  │
+       │  (HF Trainer or     │     seeds, sign-flip   │  (data/*.csv)    │
+       │   manual loop)      │  ─────────────────────►│                  │
+       └──────────┬──────────┘                        └──────────────────┘
+                  │ MetricCollector
+                  ▼
+       ┌─────────────────────┐
+       │  FeatureExtractor   │  ← public API surface (api.py / hf_callback.py)
+       │  (defaultplusplus.  │
+       │   api)              │
+       └─────────────────────┘
+```
+
+Concretely:
+
+| Stage                         | Code path                                                                | Output                       |
+|-------------------------------|--------------------------------------------------------------------------|------------------------------|
+| Mutation injection            | `defaultplusplus.deform.{operators,injection,validation}`                | `Mutant` records             |
+| Paired training + extraction  | `defaultplusplus.benchmark.runner` + `defaultplusplus.api.FeatureExtractor` | per-config feature vectors |
+| Benchmark assembly            | `defaultplusplus.benchmark.dataset_writer`                               | `data/*.csv`                 |
+| Diagnostic model training     | `hierarchical_graph_category_rootcause.train`                            | `results/.../*.json`         |
+| Ablation + plots              | `hierarchical_graph_category_rootcause.evaluate`                         | comparison table + figures   |
+| Post-hoc importance           | `hierarchical_graph_category_rootcause.posthoc_analysis`                 | importance JSON + plots      |
+| Baseline comparison           | `../baselines/run_baselines.py`                                          | per-baseline JSONs           |
+
+---
+
+## 2. Repository tour
+
+```
+DEFaultplusplus-Transformer-Debugging/
+  defaultplusplus/                          installable package + research drivers
+    src/defaultplusplus/                    PyPI-shipped code only
+      __init__.py                           public API (FeatureExtractor, ...)
+      _version.py                           single source of truth for __version__
+      api.py                                FeatureExtractor (manual loop)
+      hf_callback.py                        DEFaultPlusCallback (HF Trainer)
+      config.py                             ExtractionConfig
+      extraction/
+        inspector.py                        auto-discovers HF model structure
+        collector.py                        orchestrates per-step metric modules
+        aggregator.py                       Welford running statistics
+        feature_construction.py             layer/step/epoch/phase aggregator
+        metrics/{attention,gradient,...}.py per-component metric modules
+      deform/
+        operators.py                        45 mutation operators (Tables 7.1+7.2)
+        injection.py                        StaticFault, DynamicFault context managers
+        validation.py                       sign-flip permutation test, verifier
+        fault_config.py                     FaultConfiguration, Mutant types
+      benchmark/
+        config_grid.py                      enumerate (model, task, op, layer, sev)
+        runner.py                           run_one_configuration
+        dataset_writer.py                   shard CSV writer
+      diagnosis/, pretrained/, processing/, ui/   reserved for runtime roadmap
+
+    hierarchical_graph_category_rootcause/  research-side training (NOT in wheel)
+      train.py                              5-fold CV training driver
+      evaluate.py                           4-variant ablation driver
+      posthoc_analysis.py                   permutation feature/group importance
+      model.py                              HierarchicalDiagnosisModel
+      losses.py                             L_DEFault++ formula
+      plotting.py                           matplotlib figures
+
+    src/data/, src/models/                  research-side helpers (NOT in wheel)
+      feature_groups.py                     12/13 feature group taxonomy
+      feature_processor.py                  six-step preprocessing pipeline
+      fundamental_fpg.py                    FPG construction + group adjacency
+      loader.py                             CSV / pickle loaders
+      group_encoder.py                      GroupEncoder + GraphAggregator
+
+    configs/base.yaml                       hyperparameter config
+    examples/extract_*.py                   runnable demos
+    scripts/
+      setup.sh                              local venv setup
+      dry_run_local.sh                      end-to-end smoke test
+      build_pypi.sh                         clean → build → twine check → upload
+      cc/                                   Compute Canada SLURM scripts
+        env.sh setup_env.sh bench_array.sh merge_shards.sh train.sh ablation.sh
+    tests/                                  pytest suite (58 tests)
+      conftest.py                           sys.path shim for src/ + src/defaultplusplus
+      test_phase0_gate.py                   structural gate
+      test_phase1_gate.py                   feature-group gate
+      test_dry_run.py                       fast smoke (~1s)
+      test_feature_extractor.py             real DistilBERT + GPT-2 + HF Trainer
+    pyproject.toml                          PEP 621 metadata + build config
+    LICENSE                                 Apache-2.0
+    CHANGELOG.md                            version history
+    Makefile                                research-side commands
+
+    README.md                               package-side user reference
+    RESEARCH.md                             this file
+
+  data/                                     DEFault-bench (consolidated CSVs)
+    encoder_v1_killed_binary.csv            9,560 encoder feature traces
+    decoder_v1_killed_binary.csv            9,310 decoder feature traces
+    encoder_absolute_filled_labeled.csv     mutation 'killed' labels (encoder)
+    decoder_absolute_filled_labeled.csv     mutation 'killed' labels (decoder)
+    README.md                               data layout + MD5 checksums
+
+  baselines/                                baseline detection scripts
+    run_baselines.py                        DEFault, DeepFD, AutoTrainer, DeepDiagnosis
+
+  realworld_benchmark/                      real-world GitHub-issue evaluation
+    cases/, metadata/, run_benchmarks.py
+
+  user_study/                               developer-study assets
+  docs/SPEC.md                              output schema + architecture + roadmap
+  DEFault++.pdf                             scientific reference
+  results/                                  generated outputs (gitignored)
+```
+
+---
+
+## 3. Setup
+
+### Local
+
+```bash
+cd defaultplusplus
+bash scripts/setup.sh                          # creates ../.venv, pip install -e .[dev]
+source ../.venv/bin/activate
+make data-check                                # confirms data/*.csv are present
+```
+
+If you need the HF Trainer test path or the example notebooks:
+
+```bash
+pip install -e ".[dev,hf]"
+```
+
+### Compute Canada
+
+```bash
+# One-time on a login node:
+bash defaultplusplus/scripts/cc/setup_env.sh
+```
+
+This creates `$SCRATCH/venvs/defaultplusplus`, pre-fetches all
+HuggingFace tokenizers, and points caches to scratch. Every SLURM job
+script then sources `defaultplusplus/scripts/cc/env.sh` to load the
+module stack and activate the venv. See
+[`scripts/cc/README.md`](scripts/cc/README.md) for the full pipeline.
+
+---
+
+## 4. Commands
+
+All commands assume you are inside `defaultplusplus/`.
+
+### Daily research workflow
+
+```bash
+make data-check                  # verify ../data/*.csv exist
+make train                       # 5-fold CV, both archs (~30 min CPU smoke)
+make ablation                    # 4 variants × 2 archs × 5 folds
+make baselines                   # DEFault, DeepFD, AutoTrainer, DeepDiagnosis
+make all                         # data-check + train + ablation + baselines
+make clean                       # rm -rf ../results/, drops __pycache__/
+```
+
+### Module-level invocations (more flexible than `make`)
+
+```bash
+python -m hierarchical_graph_category_rootcause.train \
+       --arch encoder --epochs 1                           # 1-epoch smoke
+python -m hierarchical_graph_category_rootcause.train \
+       --arch both --no-graph                              # ablate FPG
+python -m hierarchical_graph_category_rootcause.train \
+       --arch both --no-sep                                # ablate separation loss
+python -m hierarchical_graph_category_rootcause.train \
+       --arch both --no-graph --no-sep                     # basic variant
+
+python -m hierarchical_graph_category_rootcause.evaluate \
+       --arch both --no-plots                              # all 4 variants, no figures
+python -m hierarchical_graph_category_rootcause.evaluate \
+       --arch encoder --output ../results/runs/2026-04-29  # custom output dir
+
+python -m hierarchical_graph_category_rootcause.posthoc_analysis \
+       --arch both                                         # permutation importance
+
+python ../baselines/run_baselines.py --arch both           # baseline comparison
+```
+
+### Tests
+
+```bash
+pytest tests/                              # all 58 tests (~13s)
+pytest tests/test_dry_run.py -v            # 14 smoke tests (~1s)
+pytest tests/test_feature_extractor.py -v  # real-model API tests (~15s)
+bash scripts/dry_run_local.sh --quick      # imports + smoke + FPG sanity
+bash scripts/dry_run_local.sh --train      # also runs 1-epoch training
+```
+
+### Build / publish (when releasing a new version)
+
+```bash
+# 1. Bump src/defaultplusplus/_version.py and add a CHANGELOG entry.
+# 2. Build:
+bash scripts/build_pypi.sh                 # clean → build → twine check
+# 3. Smoke test on TestPyPI:
+bash scripts/build_pypi.sh --testpypi
+# 4. Publish:
+bash scripts/build_pypi.sh --pypi
+```
+
+### Compute Canada
+
+```bash
+sbatch scripts/cc/bench_array.sh           # build DEFault-bench (GPU array)
+sbatch scripts/cc/merge_shards.sh          # concat per-task shards
+sbatch scripts/cc/train.sh                 # train diagnostic model
+sbatch scripts/cc/ablation.sh              # 4-variant ablation
+```
+
+---
+
+## 5. The diagnostic model
+
+### Architecture
+
+A shared encoder feeds three classification levels:
+
+```
+input_features
+   │
+   ▼
+GroupEncoder           per-group MLPs (one per of 12/13 feature groups)
+   │
+   ▼
+GraphAggregator        H = ReLU(A_hat · H · W_msg)  ×3 rounds
+   │
+   ▼
+projection             64-dim shared embedding z, plus group-stacked H
+   │
+   ├─► detection head            binary logits  (faulty vs clean)
+   ├─► category head             C-class logits (11 enc / 12 dec)
+   └─► per-category root-cause heads  +  prototype matcher in H-space
+```
+
+Code: [`hierarchical_graph_category_rootcause/model.py`](hierarchical_graph_category_rootcause/model.py).
+
+### Loss
+
+```
+L = L_detect + α·L_cat + λ_rc·L_rc + L_sep
+L_sep = β·L_ctr + γ·L_pm
+```
+
+| Term | Code | Default |
+|---|---|---|
+| `L_detect` | `detection_loss` (BCE on detection head) | weight = 1.0 |
+| `L_cat` | `category_loss` (CE on category head, faulty only) | α = 1.0 |
+| `L_rc` | `rootcause_loss` (per-category CE) | λ_rc = 1.0 |
+| `L_ctr` | `contrastive_separation_loss` (SupCon over `vec(H)`) | β = 0.5 |
+| `L_pm` | `prototype_matching_loss` (CE over -d/τ) | γ = 0.3 |
+
+Code: [`hierarchical_graph_category_rootcause/losses.py`](hierarchical_graph_category_rootcause/losses.py).
+Hyperparameters: [`configs/base.yaml`](configs/base.yaml).
+
+### Feature groups (Table 7.7)
+
+12 encoder + 13 decoder groups defined in
+[`src/data/feature_groups.py`](src/data/feature_groups.py):
+
+```
+structural (FPG nodes):
+  attention, score, ffn_output, layernorm, residual_stream,
+  qkv_alignment, embedding, positional, output, cache (decoder only)
+non-structural (self-loop only):
+  representation_drift, training_dynamics, validation_perf
+```
+
+### FPG message passing (Section 7.4.4.2)
+
+Component-level FPG → group-level adjacency Â (row-normalized,
+self-loops). Three rounds of `H = ReLU(Â · H · W_msg)`.
+Code: [`src/models/group_encoder.py`](src/models/group_encoder.py),
+[`src/data/fundamental_fpg.py`](src/data/fundamental_fpg.py).
+
+### Explanation (Equations 7.29–7.30)
+
+Per-group importance is computed from the predicted vs. nearest-
+alternative prototype margin:
+
+```
+Δ_g = d_g(π_alt) − d_g(π_pred)
+w_g = max(Δ_g, 0) / Σ max(Δ_g', 0)
+```
+
+Code: `HierarchicalDiagnosisModel.explain_diagnosis` in `model.py`.
+
+---
+
+## 6. The DEForm engine
+
+### Operator catalog (Tables 7.1 + 7.2)
+
+45 operators across 12 components, with three-letter IDs. Code:
+[`src/defaultplusplus/deform/operators.py`](src/defaultplusplus/deform/operators.py).
+
+Operators have four search-type categories:
+
+| Type | Meaning | Example |
+|---|---|---|
+| `B`  | binary on/off | `MZM` (zero attention mask) |
+| `EU` | numeric grid | `ETZ` (zero N% of token embeddings) |
+| `EL` | categorical | `FCA` (replace activation: ReLU/GELU/Tanh/Sigmoid) |
+
+### Injection mechanisms
+
+| Type | Class | What it does |
+|---|---|---|
+| Static  | `StaticFault`  | back up parameters → mutate in place → restore on context exit |
+| Dynamic | `DynamicFault` | wrap `module.forward` with a closure → restore on context exit |
+
+Both subclass `FaultInjector`, which is an `AbstractContextManager`.
+Use them inside a `with` block:
+
+```python
+from defaultplusplus.deform.injection import StaticFault
+
+class _ZeroQ(StaticFault):
+    def parameters_to_mutate(self, model):
+        return [model.bert.encoder.layer[0].attention.self.query.weight]
+    def mutate_parameters(self, params):
+        for p in params:
+            p.zero_()
+
+with _ZeroQ(model):
+    # forward passes here see the zero query projection
+    outputs = model(**batch)
+# parameters restored automatically here
+```
+
+### Mutation killing (Section 7.3.4)
+
+Five matched seeds, exact one-sided sign-flip permutation test.
+Floor p-value 1/2⁵ ≈ 0.031. Code:
+[`src/defaultplusplus/deform/validation.py`](src/defaultplusplus/deform/validation.py).
+
+```python
+from defaultplusplus.deform.validation import is_killed
+
+clean = [0.90, 0.91, 0.89, 0.92, 0.90]
+faulty = [0.70, 0.72, 0.68, 0.74, 0.71]
+killed, p = is_killed(clean, faulty, higher_is_better=True, alpha=0.05)
+# killed=True, p=0.03125 (= 1/32)
+```
+
+---
+
+## 7. The benchmark pipeline
+
+```
+┌──────────────────┐  enumerate_configurations  ┌──────────────────┐
+│  BenchmarkSpec   │ ─────────────────────────► │ FaultConfig grid │
+└──────────────────┘                            └──────────┬───────┘
+                                                           │ for each
+                                                           ▼
+                                                ┌──────────────────┐
+                                                │ run_one_config   │
+                                                │  (5 paired seeds)│
+                                                └──────────┬───────┘
+                                                           │ Mutant
+                                                           ▼
+                                                ┌──────────────────┐
+                                                │ DatasetWriter    │
+                                                │  (CSV shard)     │
+                                                └──────────┬───────┘
+                                                           │ merge
+                                                           ▼
+                                                ┌──────────────────┐
+                                                │ data/*.csv       │
+                                                └──────────────────┘
+```
+
+Code: `src/defaultplusplus/benchmark/`. The runner takes pluggable
+`FineTuneFn` and `FeatureBuilderFn` callables so it can be unit-
+tested without HF or GPUs (see `tests/test_dry_run.py`).
+
+---
+
+## 8. How to extend
+
+### Add a new mutation operator
+
+1. **Define the operator** in [`src/defaultplusplus/deform/operators.py`](src/defaultplusplus/deform/operators.py):
+
+   ```python
+   Operator("XYZ", OperatorComponent.SCORE, "my_root_cause",
+            "Description shown in tables.",
+            OperatorSearchType.NUMERIC_GRID,
+            param_name="factor", param_grid=(0.5, 2.0, 5.0),
+            scope="both")
+   ```
+
+2. **Implement the injection** as a `StaticFault` or `DynamicFault`
+   subclass. Put it in `src/defaultplusplus/deform/operator_impls/<id>.py`
+   (create the dir if needed).
+
+3. **Register it** in a factory dict so `BenchmarkSpec` can resolve
+   the operator ID to the injector class. The current code looks up
+   operators by ID in `OPERATORS`; you'll wire your impl into the
+   `injector_factory` callable that `run_one_configuration` accepts.
+
+4. **Add a test** in `tests/test_dry_run.py` that imports the new
+   operator and verifies the structural verifier passes on a tiny
+   model.
+
+### Add a new metric
+
+1. Add the metric to one of the existing modules in
+   [`src/defaultplusplus/extraction/metrics/`](src/defaultplusplus/extraction/metrics/)
+   (or create a new one inheriting `MetricModule`).
+2. The metric's `collect()` returns `dict[str, float]`. Keys must
+   follow the naming convention in the contract.
+3. Update `../docs/SPEC.md` to add the metric and tag it as
+   `exact` / `approximate` / `reconstructed`.
+4. Add a regex token in [`src/data/feature_groups.py`](src/data/feature_groups.py)
+   so the column routes to the right group.
+
+### Add a new feature group
+
+1. Add the group name to `STRUCTURAL_GROUPS` or `NON_STRUCTURAL_GROUPS`
+   in [`src/data/feature_groups.py`](src/data/feature_groups.py).
+2. Add a token rule to `_TOKEN_RULES` so columns route into it.
+3. If structural, add component → group mappings in
+   [`src/data/fundamental_fpg.py:_COMP_TO_GROUP`](src/data/fundamental_fpg.py).
+4. Re-run the FPG sanity portion of the dry-run script:
+   `bash scripts/dry_run_local.sh --quick`.
+
+### Add a new ablation variant
+
+1. Extend `ABLATION_VARIANTS` in
+   [`hierarchical_graph_category_rootcause/evaluate.py`](hierarchical_graph_category_rootcause/evaluate.py).
+2. Add a CLI flag in `train.py:main` and thread it through
+   `run_experiment(use_graph=, use_sep=)`.
+
+### Bump the package
+
+1. `defaultplusplus/src/defaultplusplus/_version.py`: bump version.
+2. `defaultplusplus/CHANGELOG.md`: add a dated entry.
+3. `bash scripts/build_pypi.sh` → check artifacts.
+4. `bash scripts/build_pypi.sh --testpypi` → install in throwaway venv.
+5. `bash scripts/build_pypi.sh --pypi`.
+
+---
+
+## 9. Data flow
+
+### Training-time feature collection
+
+```
+HF model + batch
+   │
+   ▼
+ModelInspector.discover_structure()        # auto-detect QKV/FFN/LN paths
+   │
+   ▼
+MetricCollector.collect_step(...)
+   ├─ TrainingMetrics       (loss, lr, step time, memory)
+   ├─ GradientMetrics       (per-component grad norms, update ratios)
+   ├─ AttentionMetrics      (entropy, mass_pad, head_similarity, ...)
+   ├─ StructuralMetrics     (residual cosine, ffn norms, LN stats, CKA)
+   ├─ LogitMetrics          (NLL, ECE, margin, accuracy, F1)
+   ├─ PositionalMetrics     (positional sensitivity)
+   └─ CacheMetrics          (decoder only: cache_hidden_sim)
+   │
+   ▼
+EpochAggregator.update(per-step dict)      # Welford running stats
+   │
+   ▼ (every epoch_end)
+EpochAggregator.finalize_epoch()           # mean/var/burst per metric
+   │
+   ▼ (at finalize)
+get_final_features()                       # contract keys, flat
+   +
+build_feature_vector(TrainingTrace)        # layer/step/epoch/phase aggregates
+   │
+   ▼
+flat dict[str, float]                      # the feature vector
+```
+
+### Diagnostic-model training
+
+```
+data/*.csv (3,739 instances)
+   │
+   ▼
+prepare_dataset_from_csv (loader.py)       # X, y_detect, y_category, y_rootcause
+   │
+   ▼ (per CV fold)
+apply_processing_in_fold (feature_processor.py)
+   ├─ Step 1: drop NaN > 40%
+   ├─ Step 2: log1p high-variance cols
+   ├─ Step 3: per-layer aggregation (encoder)
+   ├─ Step 4: median imputation in fold
+   ├─ Step 5: drop CV < 0.01
+   └─ Step 6: route columns to feature groups (Table 7.7)
+   │
+   ▼
+HierarchicalDiagnosisModel(group_dims, adjacency, ...)
+   │
+   ▼
+hierarchical_loss (5 components)
+   │
+   ▼
+train_one_fold (early stopping on val_metric blend)
+   │
+   ▼
+evaluate_one_fold (all 3 levels, oracle + predicted-category routes)
+   │
+   ▼
+results/.../{arch}_{variant}.json
+```
+
+---
+
+## 10. Compute Canada workflow
+
+`$PROJECT` and `$SCRATCH` are CC environment variables. Code lives in
+`$PROJECT`; HF caches and transient artifacts live in `$SCRATCH`.
+
+```bash
+# One-time on the login node
+bash defaultplusplus/scripts/cc/setup_env.sh
+
+# Stage 1: build DEFault-bench (GPU array, ~3,739 tasks → 18,600 GPU-hours)
+sbatch defaultplusplus/scripts/cc/bench_array.sh
+
+# Concatenate per-task shards
+sbatch defaultplusplus/scripts/cc/merge_shards.sh
+
+# Stage 2: train the diagnostic model
+sbatch defaultplusplus/scripts/cc/train.sh
+
+# Stage 3: 4-variant ablation study
+sbatch defaultplusplus/scripts/cc/ablation.sh
+```
+
+Edit `--account=def-yourgroup` in each `*.sh` to match your CC
+allocation. Edit `--array=0-3738%64` in `bench_array.sh` to match
+the number of configurations you generated.
+
+---
+
+## 11. Debugging tips
+
+| Symptom | First check |
+|---|---|
+| `from defaultplusplus import FeatureExtractor` raises `ModuleNotFoundError` | run `pip install -e .` from inside `defaultplusplus/`, then re-source the venv |
+| `make train` complains about missing CSVs | `make data-check` |
+| `inspector.py` fails with "Could not detect attention pattern" | the model is from an unsupported family (e.g. T5). Pass `arch=` only for `bert`/`gpt` family aliases. Pull request welcome to extend `inspector.py`. |
+| `cache.py` raises `'DynamicCache' object is not subscriptable` | already fixed in 0.2.0; if you hit it again on a newer transformers release, extend `_extract_kv_pairs` |
+| `feature_construction.py` `IndexError: index 1 out of bounds` | already fixed for n=1 epochs; if it returns, check `_band_indices` for the new shape |
+| HF Trainer test skips with "accelerate is required" | `pip install -e ".[hf]"` |
+| `build_pypi.sh` reports "version is not dynamic" | `pyproject.toml`'s `dynamic = ["version"]` line was removed; restore it |
+| sign-flip test always returns p=1.0 | argument order: `is_killed(clean, faulty, higher_is_better)`; perplexity needs `False` |
+
+### Useful inspection commands
+
+```bash
+# Inspect the wheel that PyPI would receive
+python -c "import zipfile, sys; z=zipfile.ZipFile(sys.argv[1]); print('\n'.join(z.namelist()))" \
+       dist/defaultplusplus-0.2.0-py3-none-any.whl
+
+# Inspect the FPG group-level adjacency
+python -c "from src.data.fundamental_fpg import fundamental_to_feature_group_adjacency; \
+           names, adj, _ = fundamental_to_feature_group_adjacency('decoder'); \
+           print(names); print(adj)"
+
+# Print the operator catalog
+python -c "from defaultplusplus.deform import OPERATORS; \
+           [print(f'{op.op_id}  {op.component.value:11s}  {op.action}') \
+            for op in OPERATORS.values()]"
+```
+
+---
+
+## 12. Pointers to the manuscript chapter
+
+| Topic | Location in `../DEFault++.pdf` |
+|---|---|
+| Introduction + motivating example | Sections 7.1–7.2 |
+| Fault taxonomy + operator catalog | Section 7.3, Tables 7.1, 7.2, Figure 7.3 |
+| DEForm injection mechanism | Section 7.3.2, Figure 7.4 |
+| Subject models / tasks | Section 7.3.3, Table 7.3 |
+| Mutation validation | Section 7.3.4, Algorithm 1 |
+| Benchmark statistics | Section 7.3.5, Tables 7.4, 7.5 |
+| FPG construction | Section 7.4.2, Figure 7.5, Table 7.6 |
+| Feature representation + Table 7.7 / 7.8 | Section 7.4.3 |
+| Feature-vector construction (Equation 7.19) | Section 7.4.3.1, Figure 7.7 |
+| Diagnostic model + algorithms | Section 7.4.4, Figure 7.8 |
+| Equation 7.20 (group encoder) | Section 7.4.4.1 |
+| Equation 7.22 (message passing) | Section 7.4.4.2 |
+| Loss formulas (7.25–7.28) | Section 7.4.5, Figure 7.9 |
+| Equations 7.29 – 7.30 (explanation) | Section 7.4.6 |
+| Evaluation results | Section 7.5 |
+| Real-world bug evaluation | Section 7.6, Table 7.20 |
+| Developer study | Section 7.7 |
+
+---
+
+## 13. What's next
+
+The roadmap lives in [`../docs/SPEC.md`](../docs/SPEC.md) §3 (schema
+gaps, runtime product items, benchmark items, out-of-v1 scope). The
+reserved subpackages (`diagnosis/`, `processing/`, `pretrained/`,
+`ui/`) carry placeholder docstrings explaining what each will hold.
+
+---
+
+## 14. License + citation
+
+Apache-2.0 (`LICENSE`).
+
+```bibtex
+@inproceedings{jahan2026hierarchical,
+  title={Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers},
+  author={Jahan, Sigma and others},
+  booktitle={NeurIPS},
+  year={2026}
+}
+```

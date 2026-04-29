@@ -1,0 +1,35 @@
+data:
+  # Paths are resolved from the repository root.
+  data_dir: data
+  encoder_csv: data/encoder_v1_killed_binary.csv
+  decoder_csv: data/decoder_v1_killed_binary.csv
+  encoder_origin_csv: data/encoder_absolute_filled_labeled.csv
+  decoder_origin_csv: data/decoder_absolute_filled_labeled.csv
+
+cv:
+  n_splits: 5
+  seed: 42
+  group_key: [model_name, dataset_name, seed]
+
+model:
+  group_hidden_dim: 32      # h in the per-group encoder
+  embedding_dim: 64         # e in the projection layer
+  n_message_passing: 3      # rounds of FPG message passing
+  dropout: 0.1
+  temperature: 0.1          # shared τ for contrastive + prototype matching
+
+training:
+  epochs: 150
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 256
+  patience: 20
+  # Hierarchical loss weights:
+  #   L = L_detect + alpha*L_cat + lambda_rc*L_rc + L_sep
+  #   L_sep = beta*L_ctr + gamma*L_pm
+  alpha: 1.0          # weight on category cross-entropy
+  lambda_rc: 1.0      # weight on root-cause cross-entropy
+  beta: 0.5           # weight on contrastive term inside L_sep
+  gamma: 0.3          # weight on prototype-matching term inside L_sep
+
+seed: 42

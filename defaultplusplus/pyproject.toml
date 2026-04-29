@@ -1,0 +1,136 @@
+# Packaging configuration for DEFault++.
+#
+# Follows PEP 517 (build-system table) and PEP 621 (project metadata).
+# Run `python -m build` from this directory to produce wheel + sdist
+# artifacts in `dist/`. See `scripts/build_pypi.sh` for the full
+# publishing flow (clean → build → twine check → TestPyPI → PyPI).
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ── Project metadata (PEP 621) ───────────────────────────────────────────
+[project]
+name = "defaultplusplus"
+description = "Hierarchical fault diagnosis and runtime feature extraction for HuggingFace transformers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Sigma Jahan", email = "sigmajahan1@gmail.com" },
+]
+maintainers = [
+    { name = "Sigma Jahan", email = "sigmajahan1@gmail.com" },
+]
+keywords = [
+    "transformers",
+    "fault-diagnosis",
+    "fault-detection",
+    "deep-learning-debugging",
+    "huggingface",
+    "fine-tuning",
+    "feature-extraction",
+    "training-monitoring",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+
+# Version is read from ``src/defaultplusplus/_version.py`` so there is
+# a single source of truth.
+dynamic = ["version"]
+
+# Required to use the package's runtime feature extractor and
+# diagnostic model.
+dependencies = [
+    "torch>=2.1",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "scikit-learn>=1.4",
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+    "joblib>=1.3",
+    "transformers>=4.30",
+]
+
+[project.optional-dependencies]
+# Pulled in when users wire DEFault++ into a HuggingFace ``Trainer`` or
+# load HF datasets.
+hf = [
+    "accelerate>=1.1.0",
+    "datasets>=2.14",
+]
+# Plotting + analysis used by the experiment driver and ablation
+# scripts. Not needed for the runtime ``FeatureExtractor`` API.
+viz = [
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
+    "rich>=13.0",
+]
+# Machine-learning baselines used by the comparison experiments.
+baselines = [
+    "xgboost>=2.0",
+    "imbalanced-learn>=0.12",
+]
+# Development workflow.
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "build>=1.0",
+    "twine>=5.0",
+]
+# Convenience extra for installing the full research stack.
+all = [
+    "defaultplusplus[hf,viz,baselines]",
+]
+
+[project.urls]
+Homepage      = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging"
+Repository    = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging"
+Documentation = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging#readme"
+Issues        = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/issues"
+Changelog     = "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/CHANGELOG.md"
+
+# ── setuptools configuration ─────────────────────────────────────────────
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { attr = "defaultplusplus._version.__version__" }
+
+[tool.setuptools.packages.find]
+where   = ["src"]
+include = ["defaultplusplus*"]
+
+[tool.setuptools.package-data]
+defaultplusplus = [
+    "py.typed",
+]
+
+# ── Tooling ──────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

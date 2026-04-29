@@ -1,48 +1,152 @@
-# DEFault++ Transformer Debugging Workspace
+# DEFault++
 
-This README is workspace navigation only. The numbered top-level directories are intentional: the active DEFault++ implementation lives in `7_DEFaultpp-code`, while the mutation data, manuscript, baselines, benchmarks, and user-study materials live alongside it.
+Hierarchical fault diagnosis and runtime feature extraction for
+HuggingFace transformers.
 
-Research and reproduction usage live in [`7_DEFaultpp-code/README.md`](7_DEFaultpp-code/README.md). The runtime-v1 contract lives in [`docs/runtime_v1_contract.md`](docs/runtime_v1_contract.md). Runtime product architecture lives in [`7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md`](7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md).
+DEFault++ inspects a fine-tuning run and answers three questions:
 
-## Workspace Layout
+  1. **Detection** – is something wrong with this run?
+  2. **Categorization** – which transformer subsystem is responsible
+     (QKV, masking, LayerNorm, …)?
+  3. **Root cause** – what specific bug pattern fits the evidence
+     (e.g. `zero_query`, `mask_application`, `weight_scaling`)?
 
-- `1_Frankenformer-Code/`: upstream FrankenFormer encoder/decoder probe code
-- `2_Frakenformer-DEFaultpp-Manuscript/`: manuscript sources and figures
-- `3_Mutation-Data-from-Frakenformer/`: tracked mutation datasets used by DEFault++
-- `4_Baseline-comparison_with_defaultpp/`: baseline comparison scripts
-- `5_Benchmarks-realworld_defaultpp/`: real-world benchmark cases and metadata
-- `6_User-study-defaultpp/`: user-study assets
-- `7_DEFaultpp-code/`: active DEFault++ package, experiments, and tests
-- `results/`: generated outputs only; ignored by Git
+The library exposes the runtime feature extractor as a clean public
+API; the diagnostic model is shipped separately on the research side.
 
-## Document Roles
-
-- `2_Frakenformer-DEFaultpp-Manuscript/Chapter_7_8.pdf`: scientific source of truth for the taxonomy, grouped diagnosis design, and benchmark construction.
-- `docs/runtime_v1_contract.md`: normative runtime-v1 contract and document-precedence reference.
-- `7_DEFaultpp-code/defaultplusplus_runtime_roadmap.md`: runtime/product architecture source of truth.
-- `7_DEFaultpp-code/Plan.md`: subordinate implementation backlog and test bank.
-- `7_DEFaultpp-code/README.md`: canonical research/reproduction README for the current artifact.
-- `7_DEFaultpp-code/features.md`: runtime feature reference derived from the runtime-v1 contract.
-
-## Setup
+## Install
 
 ```bash
-bash scripts/setup.sh
-source .venv/bin/activate
+pip install defaultplusplus
 ```
 
-The environment is created at the repository root and installs the editable package from `7_DEFaultpp-code`.
-
-## Common Commands
+For the HuggingFace `Trainer` integration:
 
 ```bash
-make data-check
-make train
-make ablation
-make baselines
-pytest 7_DEFaultpp-code/tests/test_phase0_gate.py
+pip install defaultplusplus[hf]
 ```
 
-## Notes
+## Quick start
 
-The canonical data location is `3_Mutation-Data-from-Frakenformer/`. Do not copy those CSVs into `7_DEFaultpp-code/data`; the experiment code resolves the shared dataset directory directly.
+### Manual training loop
+
+```python
+import time
+from defaultplusplus import FeatureExtractor
+
+with FeatureExtractor(model, arch="encoder") as fx:
+    for epoch in range(num_epochs):
+        for step, batch in enumerate(loader):
+            t0 = time.perf_counter()
+            outputs = model(**batch,
+                            output_attentions=True,
+                            output_hidden_states=True)
+            outputs.loss.backward()
+            optimizer.step(); optimizer.zero_grad()
+            fx.step(loss=outputs.loss, outputs=outputs,
+                    input_ids=batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    labels=batch["labels"],
+                    optimizer=optimizer,
+                    step_time=time.perf_counter() - t0)
+        fx.epoch_end(epoch)
+        fx.record_validation(epoch, eval_loop(model))
+
+feature_vector = fx.feature_vector  # populated on context-manager exit
+```
+
+### HuggingFace `Trainer`
+
+```python
+from defaultplusplus.hf_callback import DEFaultPlusCallback
+
+trainer = Trainer(
+    model=model, args=args,
+    callbacks=[DEFaultPlusCallback(out_path="features.json", arch="encoder")],
+)
+trainer.train()
+```
+
+The callback enables `output_attentions` / `output_hidden_states` on
+the model's config automatically and writes the finalized feature
+vector to `out_path` when training ends.
+
+To capture per-step attention weights and hidden states (for the
+attention-internal metrics), wrap the trainer's `compute_loss` to
+forward inputs and outputs into the callback:
+
+```python
+class _Trainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        callback.capture_inputs(dict(inputs))
+        outputs = model(**inputs)
+        callback.capture_outputs(outputs)
+        return (outputs.loss, outputs) if return_outputs else outputs.loss
+```
+
+### Output
+
+The finalized `feature_vector` is a flat `dict[str, float]` keyed by
+the schema in `docs/SPEC.md`. Save it as JSON, feed it to the
+diagnostic model, or use it as input to your own classifier.
+
+## Public API
+
+| Symbol | Purpose |
+|---|---|
+| `FeatureExtractor` | manual-loop feature extractor with `step()`, `epoch_end()`, `record_validation()`, `finalize()`, `to_json()` |
+| `DEFaultPlusCallback` | drop-in HuggingFace `TrainerCallback` |
+| `ExtractionConfig` | thresholds, sampling cadence, special-token IDs |
+| `build_feature_vector` | turn a typed `TrainingTrace` into the fixed-length feature vector |
+| `build_paired_feature_vector` | paired clean / faulty traces (used during benchmark construction) |
+
+Documented endpoints, supported model families, and the frozen output
+schema live in [`docs/SPEC.md`](docs/SPEC.md).
+
+## Examples
+
+- [`defaultplusplus/examples/extract_during_finetune.py`](defaultplusplus/examples/extract_during_finetune.py) — manual loop
+- [`defaultplusplus/examples/extract_with_hf_trainer.py`](defaultplusplus/examples/extract_with_hf_trainer.py) — HF `Trainer`
+
+## Repository layout
+
+```
+DEFaultplusplus-Transformer-Debugging/
+  defaultplusplus/         installable Python package + research drivers
+  data/                    DEFault-bench CSVs
+  baselines/               baseline detection scripts
+  realworld_benchmark/     real-world GitHub-issue evaluation
+  user_study/              developer-study assets
+  docs/                    output schema + roadmap (SPEC.md)
+  DEFault++.pdf            scientific reference
+  README.md                this file (user-facing)
+```
+
+## Documentation
+
+- [`README.md`](README.md) — this file. PyPI install, quick start,
+  public API.
+- [`defaultplusplus/README.md`](defaultplusplus/README.md) — package
+  reference: full API, examples, build / publish workflow.
+- [`docs/SPEC.md`](docs/SPEC.md) — output schema, architectural
+  principles, and roadmap.
+- [`DEFault++.pdf`](DEFault++.pdf) — scientific reference.
+
+The research-side reproduction guide and the developer notebook for
+the diagnostic model itself live in
+[`defaultplusplus/RESEARCH.md`](defaultplusplus/RESEARCH.md).
+
+## License
+
+Apache-2.0. See [`defaultplusplus/LICENSE`](defaultplusplus/LICENSE).
+
+## Citation
+
+```bibtex
+@inproceedings{jahan2026hierarchical,
+  title={Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers},
+  author={Jahan, Sigma and others},
+  booktitle={NeurIPS},
+  year={2026}
+}
+```

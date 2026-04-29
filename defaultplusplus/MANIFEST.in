@@ -1,0 +1,13 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+recursive-include src/defaultplusplus *.py *.typed
+recursive-exclude tests *
+recursive-exclude examples *
+recursive-exclude scripts *
+recursive-exclude configs *
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
