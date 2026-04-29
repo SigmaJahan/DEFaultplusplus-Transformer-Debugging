@@ -60,7 +60,7 @@ L_total = L_detect + alpha * L_category + lambda * L_rootcause + beta * L_contra
 | `losses.py` | Detection (weighted CE), category (CE), root-cause (CE), intra-family contrastive |
 | `train.py` | `load_data` (with killed-column merge), `train_one_fold`, `evaluate_one_fold`, `run_experiment` |
 | `evaluate.py` | Runs all 4 ablation variants, generates plots, saves JSON results |
-| `plotting.py` | NeurIPS-quality figures: training dynamics, confusion, ROC, explanation heatmaps |
+| `plotting.py` | Publication-quality figures: training dynamics, confusion, ROC, explanation heatmaps |
 
 ## Outputs
 

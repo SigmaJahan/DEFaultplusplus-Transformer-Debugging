@@ -144,11 +144,17 @@ Apache-2.0. See [`defaultplusplus/LICENSE`](defaultplusplus/LICENSE).
 
 ## Citation
 
+DEFault++ is unpublished research. If you use this code, please cite
+the repository directly:
+
 ```bibtex
-@inproceedings{jahan2026hierarchical,
-  title={Hierarchical Fault Diagnosis with FPG-Based Explainability for Transformers},
-  author={Jahan, Sigma and others},
-  booktitle={NeurIPS},
-  year={2026}
+@software{defaultplusplus,
+  title  = {{DEFault++}: Hierarchical Fault Diagnosis and Runtime Feature
+            Extraction for HuggingFace Transformers},
+  author = {Jahan, Sigma},
+  year   = {2026},
+  url    = {https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging},
+  version = {0.2.0},
+  note   = {Software repository; manuscript in preparation.}
 }
 ```
