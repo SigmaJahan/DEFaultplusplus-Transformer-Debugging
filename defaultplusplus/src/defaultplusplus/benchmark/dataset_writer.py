@@ -56,7 +56,7 @@ class DatasetWriter:
             fixed_columns: feature column names. The header is built
                            on first write as ``identifier_columns +
                            label_columns + tuple(fixed_columns)``. Pass
-                           the canonical feature-name list so all shard
+                           the fixed feature-name list so all shard
                            writers share the same column order.
         """
         self.shard_path = Path(shard_path)

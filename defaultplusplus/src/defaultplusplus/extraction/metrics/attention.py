@@ -17,6 +17,85 @@ from ...config import ExtractionConfig
 class AttentionMetrics(MetricModule):
     """Attention-based feature extraction across sampled layers."""
 
+    # Per-layer keys emitted by ``_compute_layer_metrics`` whenever
+    # attention weights, attention_mask, and input_ids are present
+    # (the standard runtime case). Used by ``static_feature_names``
+    # to pin the schema at construction time.
+    _PER_LAYER_KEYS = (
+        "attention_entropy",
+        "attention_entropy_mean",
+        "attention_entropy_std",
+        "attention_max_mean",
+        "attention_max_std",
+        "attention_sparsity",
+        "attention_weight_magnitude",
+        "attention_mass_leak",
+        "attention_mass_leak_max",
+        "attention_cross_example_leak",
+        "attention_mass_future",
+        "attention_mass_pad_mean",
+        "attention_mass_pad_max",
+        "head_similarity_mean",
+        "head_similarity_std",
+        "head_similarity_max",
+        "positional_recv_mean",
+        "positional_recv_var",
+        "positional_recv_skew",
+        "positional_recv_early",
+        "positional_recv_mid",
+        "positional_recv_late",
+        "positional_recv_mid_over_early",
+        "positional_recv_late_over_early",
+        "attention_score_var",
+        "attention_score_skew",
+        "pre_softmax_score_mean",
+        "pre_softmax_score_var",
+        "pre_softmax_score_skew",
+        "pre_softmax_score_kurt",
+        "qkv_alignment_qk_cos_mean",
+        "qkv_alignment_qv_cos_mean",
+        "qkv_alignment_kv_cos_mean",
+    )
+
+    # Conditional per-layer keys emitted only when ``cls_token_id`` is
+    # configured (the runtime can identify CLS / SEP tokens). Joined
+    # into ``static_feature_names`` only when the flag is set so the
+    # schema reflects what this collector will actually emit.
+    _PER_LAYER_SPECIAL_KEYS = (
+        "attention_mass_special_mean",
+        "attention_mass_special_std",
+    )
+
+    _GLOBAL_ALIAS_KEYS = (
+        "attention_entropy",
+        "attention_entropy_mean",
+        "mass_pad",
+        "mass_leak",
+        "cross_example_attention",
+        "attention_mass_future",
+        "pre_softmax_score_mean",
+        "pre_softmax_score_var",
+        "pre_softmax_score_skew",
+        "pre_softmax_score_kurt",
+        "head_similarity_mean",
+        "head_similarity_max",
+        "qkv_alignment_qk_cos_mean",
+        "qkv_alignment_qv_cos_mean",
+        "qkv_alignment_kv_cos_mean",
+    )
+
+    def static_feature_names(self) -> list[str]:
+        sampled = self.inspector.get_sampled_layer_indices()
+        per_layer = list(self._PER_LAYER_KEYS)
+        if self.special_token_ids.get("cls") is not None:
+            per_layer.extend(self._PER_LAYER_SPECIAL_KEYS)
+        names: list[str] = []
+        for layer_idx in sampled:
+            for key in per_layer:
+                names.append(f"L{layer_idx}_{key}")
+        names.extend(self._GLOBAL_ALIAS_KEYS)
+        return names
+
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
         super().__init__(inspector)
         cfg = config or ExtractionConfig()

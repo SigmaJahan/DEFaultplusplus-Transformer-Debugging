@@ -28,6 +28,14 @@ class ExtractionConfig:
     activation_interval: int = 10
     gradient_window: int = 20
 
+    # KV-cache probe (decoder only). The cache_nll_divergence metric
+    # runs an extra fresh-vs-cached forward at sampled positions and is
+    # therefore expensive; gate it behind a separate cadence and a
+    # bounded sample count so training-time overhead stays predictable.
+    cache_probe_interval: int = 50
+    cache_probe_positions: int = 3
+    cache_probe_max_seq_len: int = 64
+
     # Representation drift
     representation_epochs: List[int] = field(default_factory=lambda: [1, 4, 7, 10])
     representation_tokens: int = 256

@@ -58,9 +58,9 @@ class Operator:
     Attributes:
         op_id:        three-letter ID (uppercase).
         component:    transformer component being mutated.
-        root_cause:   short canonical name of the fault root cause; this
-                      becomes the level-3 label of any mutant produced by
-                      this operator.
+        root_cause:   short standardized name of the fault root cause;
+                      this becomes the level-3 label of any mutant
+                      produced by this operator.
         action:       human-readable description of what the operator does.
         search_type:  how DEForm searches the operator's parameter space.
         param_name:   name of the parameter searched over (or None for B).

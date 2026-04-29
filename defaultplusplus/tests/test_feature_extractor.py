@@ -3,7 +3,7 @@
 These tests exercise the package as a downstream user would: import
 ``FeatureExtractor`` from the top of the package, run a few training
 steps on a tiny real model, and assert that the finalize call returns
-a non-empty feature dictionary keyed against the runtime contract.
+a non-empty feature dictionary keyed against the runtime schema.
 
 The HF callback test uses a `Trainer` if the `transformers` package is
 installed; otherwise it is skipped.

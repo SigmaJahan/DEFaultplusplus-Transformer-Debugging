@@ -287,7 +287,7 @@ class FeatureExtractor(AbstractContextManager):
         """Build the fixed-length feature vector for the run.
 
         Merges the collector's final-feature dictionary (which carries
-        the contract keys directly) with the layer / step / epoch /
+        the schema keys directly) with the layer / step / epoch /
         training-phase aggregates produced by
         :func:`build_feature_vector`. Subsequent calls return the
         cached result.
@@ -302,7 +302,7 @@ class FeatureExtractor(AbstractContextManager):
         merged.update(flat_features)
         for k, v in trace_features.items():
             # Trace-aggregated keys carry a `__trace__` segment so they
-            # cannot collide with the contract keys.
+            # cannot collide with the schema keys.
             merged[f"trace__{k}"] = v
 
         # Sanitize: every value finite, every key a str.
@@ -315,6 +315,14 @@ class FeatureExtractor(AbstractContextManager):
             if not math.isfinite(f):
                 f = 0.0
             cleaned[str(key)] = f
+
+        # Pad to the schema. Every column declared in
+        # ``feature_names`` is filled with 0.0 if the runtime did not
+        # emit it (e.g. the user ran SST-2 so val_pearson never showed
+        # up). This is what makes the public output a fixed-length
+        # vector regardless of which task / model / config produced it.
+        for schema_key in self.collector.feature_names:
+            cleaned.setdefault(schema_key, 0.0)
 
         self.feature_vector = cleaned
         return cleaned
@@ -420,5 +428,5 @@ class FeatureExtractor(AbstractContextManager):
 
     @property
     def feature_names(self) -> list[str]:
-        """Stable list of contract feature names known to the collector."""
+        """Stable list of feature names declared by the collector schema."""
         return list(self.collector.feature_names)

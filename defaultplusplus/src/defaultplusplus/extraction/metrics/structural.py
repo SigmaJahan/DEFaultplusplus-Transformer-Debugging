@@ -16,6 +16,38 @@ from ...config import ExtractionConfig
 class StructuralMetrics(MetricModule):
     """Structural probes for FFN, LayerNorm, residual connections, embeddings."""
 
+    _PER_LAYER_KEYS = (
+        "ffn_delta_l{i}_mean",
+        "residual_cos_l{i}_mean",
+        "ffn_var_ratio_l{i}",
+        "ln_std_l{i}_mean",
+        "ln_mean_abs_l{i}_mean",
+        "ffn_active_dim_frac_l{i}",
+        "ffn_out_skew_l{i}",
+    )
+
+    _GLOBAL_KEYS = (
+        "ffn_delta_mean",
+        "residual_cos_mean",
+        "ffn_var_ratio_mean",
+        "ln_std_mean",
+        "ln_mean_abs_mean",
+        "ffn_active_dim_frac_mean",
+        "ffn_out_skew_mean",
+        "embedding_norm_mean",
+        "embedding_norm_std",
+        "h1_delta_norm_mean",
+    )
+
+    def static_feature_names(self) -> list[str]:
+        n = self.inspector.num_layers or 0
+        names: list[str] = []
+        for i in range(n):
+            for tmpl in self._PER_LAYER_KEYS:
+                names.append(tmpl.format(i=i))
+        names.extend(self._GLOBAL_KEYS)
+        return names
+
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
         super().__init__(inspector)
         cfg = config or ExtractionConfig()

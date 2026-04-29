@@ -65,9 +65,13 @@ _STATIC_SPECS: dict[str, StaticSpec] = {
 _DYNAMIC_PATTERNS: dict[str, tuple[str, ...]] = {
     **{op: ("attention", "attn", "self_attn") for op in _MASK_OPS | _SCORE_OPS | _VARIANT_OPS},
     **{op: ("position", "embed_positions", "wpe") for op in _POSITIONAL_OPS},
-    **{op: ("attention", "attn", "self_attn") for op in _KERNEL_OPS | _CACHE_OPS},
+    **{op: ("attention", "attn", "self_attn") for op in _KERNEL_OPS},
     **{op: ("layer", "block", "encoder", "decoder") for op in _RESIDUAL_OPS},
     **{op: ("lm_head", "classifier", "score", "output_projection") for op in _OUTPUT_DYNAMIC_OPS},
+    # Cache operators wrap the model forward (not the per-layer attention)
+    # so they see the whole DynamicCache object once per forward and can
+    # mutate the per-layer slices selectively.
+    **{op: () for op in _CACHE_OPS},
 }
 
 
@@ -344,6 +348,12 @@ class _ForwardFault(DynamicFault):
     target_layers: tuple[int, ...]
     param_value: Any | None
 
+    def __init__(self, model: nn.Module):
+        super().__init__(model)
+        # CLK stash: holds the most recent past_key_values seen on a
+        # clean forward so a future cache-less forward leaks it back in.
+        self._cache_stash: Any = None
+
     def target_modules(self, model: nn.Module) -> list[nn.Module]:
         matches = []
         for name, module in model.named_modules():
@@ -378,7 +388,56 @@ class _ForwardFault(DynamicFault):
                 out_kwargs[key] = _mutate_positions(self.operator_id, value, self.param_value)
             elif self.operator_id == "KMD" and "dropout" in lkey:
                 out_kwargs[key] = float(self.param_value if self.param_value is not None else 0.1)
+
+        if self.operator_id in {"CST", "COB", "CTR", "CLK"}:
+            out_kwargs = self._mutate_cache_inputs(out_kwargs)
         return args, out_kwargs
+
+    def _mutate_cache_inputs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Apply CST/COB/CTR/CLK to the model-forward kwargs.
+
+        CTR / COB / CST mutate ``past_key_values`` when present.
+        CLK injects the previously-stashed cache when the caller did
+        *not* pass one, simulating cross-request reuse.
+        """
+        op = self.operator_id
+        cache_key = _find_cache_key(kwargs)
+
+        if op == "CLK":
+            # If the caller didn't supply a cache and we have a stash,
+            # leak it in. The HF forward will then run as if the user
+            # had passed an existing cache; for a fresh request, this
+            # is the cross-request leak the operator describes.
+            if cache_key is None and self._cache_stash is not None:
+                kwargs["past_key_values"] = self._cache_stash
+                kwargs["use_cache"] = True
+                # Force position_ids to the leaked offset so HF treats
+                # the new tokens as continuation rather than a restart.
+                offset = _cache_seq_length(self._cache_stash)
+                input_ids = kwargs.get("input_ids")
+                if offset and torch.is_tensor(input_ids) and input_ids.dim() == 2:
+                    seq = input_ids.size(1)
+                    kwargs["position_ids"] = torch.arange(
+                        offset, offset + seq, device=input_ids.device, dtype=torch.long
+                    ).unsqueeze(0).expand(input_ids.size(0), -1)
+            return kwargs
+
+        if cache_key is None:
+            return kwargs
+        cache = kwargs[cache_key]
+        if cache is None:
+            return kwargs
+
+        if op == "CTR":
+            length = int(self.param_value) if self.param_value is not None else 8
+            kwargs[cache_key] = _truncate_cache(cache, length)
+        elif op == "COB":
+            shift = int(self.param_value) if self.param_value is not None else 1
+            kwargs[cache_key] = _shift_cache(cache, shift)
+        elif op == "CST":
+            scope = str(self.param_value) if self.param_value is not None else "all"
+            kwargs[cache_key] = _stale_cache(cache, scope)
+        return kwargs
 
     def _mutate_output(self, out: Any) -> Any:
         op = self.operator_id
@@ -397,6 +456,14 @@ class _ForwardFault(DynamicFault):
             return _map_tensors(out, lambda x: x.to(torch.float16).to(x.dtype), first_only=True)
         if op == "OOD":
             return _map_tensors(out, _rotate_last_dim, first_only=True)
+        if op == "CLK":
+            # Stash this run's cache so a future request can read it.
+            # We keep the reference (no deep copy) — the leak is to
+            # the live cache object exactly as in a real cross-request
+            # bug where two requests share state.
+            past_kv = getattr(out, "past_key_values", None)
+            if past_kv is not None:
+                self._cache_stash = past_kv
         return out
 
 
@@ -587,3 +654,253 @@ def _rotate_last_dim(x: torch.Tensor) -> torch.Tensor:
     if x.ndim == 0 or x.shape[-1] < 2:
         return x
     return torch.roll(x, shifts=1, dims=-1)
+
+
+# ── Cache mutation helpers (CST / COB / CTR / CLK) ───────────────────────
+_CACHE_KWARG_NAMES = ("past_key_values", "past_key_value", "layer_past",
+                      "past_kv", "kv_cache")
+
+
+def _find_cache_key(kwargs: dict[str, Any]) -> str | None:
+    for name in _CACHE_KWARG_NAMES:
+        if name in kwargs and kwargs[name] is not None:
+            return name
+    return None
+
+
+def _iter_cache_layers(cache: Any):
+    """Yield ``(idx, key_tensor, value_tensor)`` triples for each layer.
+
+    Supports three HF cache shapes:
+      * Newer ``DynamicCache`` with per-layer ``DynamicLayer`` objects
+        exposing ``.keys`` / ``.values`` under ``cache.layers``.
+      * Older ``DynamicCache`` exposing parallel ``key_cache`` /
+        ``value_cache`` lists.
+      * Legacy tuple-of-tuples ``((k0, v0), (k1, v1), ...)``.
+    """
+    if hasattr(cache, "layers") and hasattr(cache.layers, "__iter__"):
+        for i, layer in enumerate(cache.layers):
+            k = getattr(layer, "keys", None)
+            v = getattr(layer, "values", None)
+            if torch.is_tensor(k) and torch.is_tensor(v):
+                yield i, k, v
+        return
+    if hasattr(cache, "key_cache") and hasattr(cache, "value_cache"):
+        keys = list(cache.key_cache)
+        values = list(cache.value_cache)
+        for i, (k, v) in enumerate(zip(keys, values)):
+            yield i, k, v
+        return
+    if isinstance(cache, (list, tuple)) and cache:
+        first = cache[0]
+        if isinstance(first, (list, tuple)) and len(first) >= 2 \
+                and isinstance(first[0], torch.Tensor):
+            for i, layer in enumerate(cache):
+                yield i, layer[0], layer[1]
+
+
+def _set_cache_layer(cache: Any, idx: int, k: torch.Tensor, v: torch.Tensor) -> None:
+    """In-place replace layer ``idx``'s K/V tensors inside ``cache``."""
+    if hasattr(cache, "layers") and hasattr(cache.layers, "__iter__"):
+        try:
+            layer = cache.layers[idx]
+        except (IndexError, KeyError, TypeError):
+            return
+        try:
+            layer.keys = k
+            layer.values = v
+        except AttributeError:
+            pass
+        return
+    if hasattr(cache, "key_cache") and hasattr(cache, "value_cache"):
+        if idx < len(cache.key_cache):
+            cache.key_cache[idx] = k
+        if idx < len(cache.value_cache):
+            cache.value_cache[idx] = v
+        return
+    if isinstance(cache, list) and idx < len(cache):
+        cache[idx] = (k, v)
+    # Tuples are immutable; the caller rebuilds the cache via _rebuild_cache.
+
+
+def _rebuild_cache(cache: Any, layers: list[tuple[torch.Tensor, torch.Tensor]]) -> Any:
+    """Return a cache object of the same shape as ``cache`` with new layers."""
+    # DynamicCache (either flavor): mutated in place via _set_cache_layer.
+    if hasattr(cache, "layers") and hasattr(cache.layers, "__iter__"):
+        return cache
+    if hasattr(cache, "key_cache") and hasattr(cache, "value_cache"):
+        return cache
+    if isinstance(cache, tuple):
+        return tuple(layers)
+    if isinstance(cache, list):
+        return list(layers)
+    return cache
+
+
+def _cache_seq_length(cache: Any) -> int:
+    """Return the K/V sequence length of the first usable layer (0 if empty)."""
+    for _idx, k, _v in _iter_cache_layers(cache):
+        if torch.is_tensor(k) and k.dim() >= 3:
+            return int(k.shape[-2])
+    return 0
+
+
+def _clone_cache(cache: Any) -> Any:
+    """Deep-copy a cache object's tensors so later forwards can't share state.
+
+    The newer ``DynamicCache.layers`` shape is the hardest to rebuild
+    cleanly because per-layer ``DynamicLayer`` objects do book-keeping
+    inside ``__init__``; we let HF reconstruct one via
+    ``DynamicCache.from_legacy_cache`` when available, falling back to
+    a tuple-of-tuples representation that any HF ≥ 4.40 forward also
+    accepts.
+    """
+    new_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for _, k, v in _iter_cache_layers(cache):
+        new_layers.append((
+            k.detach().clone() if torch.is_tensor(k) else k,
+            v.detach().clone() if torch.is_tensor(v) else v,
+        ))
+
+    # New DynamicCache (.layers): rebuild via the legacy adapter so the
+    # internal DynamicLayer state is consistent.
+    if hasattr(cache, "layers") and hasattr(cache.layers, "__iter__"):
+        cls = type(cache)
+        legacy = tuple(new_layers)
+        for ctor in ("from_legacy_cache",):
+            from_legacy = getattr(cls, ctor, None)
+            if callable(from_legacy):
+                try:
+                    return from_legacy(legacy)
+                except Exception:
+                    break
+        # Fall through to legacy tuple — HF still accepts it.
+        return legacy
+
+    if hasattr(cache, "key_cache") and hasattr(cache, "value_cache"):
+        try:
+            clone = type(cache)()
+        except TypeError:
+            clone = cache.__class__.__new__(cache.__class__)
+            clone.__init__()
+        clone.key_cache = [k for k, _ in new_layers]
+        clone.value_cache = [v for _, v in new_layers]
+        if hasattr(cache, "_seen_tokens"):
+            clone._seen_tokens = getattr(cache, "_seen_tokens")
+        return clone
+    if isinstance(cache, tuple):
+        return tuple(new_layers)
+    if isinstance(cache, list):
+        return list(new_layers)
+    return cache
+
+
+def _truncate_cache(cache: Any, length: int) -> Any:
+    """CTR: keep only the last ``length`` cached positions per layer."""
+    length = max(0, int(length))
+    new_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for idx, k, v in _iter_cache_layers(cache):
+        if torch.is_tensor(k) and torch.is_tensor(v) and k.dim() >= 3:
+            seq = k.shape[-2]
+            keep = min(length, seq)
+            k_new = k[..., -keep:, :] if keep > 0 else k[..., :0, :]
+            v_new = v[..., -keep:, :] if keep > 0 else v[..., :0, :]
+        else:
+            k_new, v_new = k, v
+        _set_cache_layer(cache, idx, k_new, v_new)
+        new_layers.append((k_new, v_new))
+    return _rebuild_cache(cache, new_layers)
+
+
+def _shift_cache(cache: Any, shift: int) -> Any:
+    """COB: misalign K/V along the sequence axis by ``shift`` positions.
+
+    A negative ``shift`` drops the leading positions and pads the tail
+    with zeros so subsequent reads land one past the true position.
+    A positive ``shift`` duplicates the leading row to push the rest
+    of the cache forward.
+    """
+    shift = int(shift)
+    if shift == 0:
+        return cache
+    new_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for idx, k, v in _iter_cache_layers(cache):
+        if torch.is_tensor(k) and torch.is_tensor(v) and k.dim() >= 3:
+            k_new = _shift_along_seq(k, shift)
+            v_new = _shift_along_seq(v, shift)
+        else:
+            k_new, v_new = k, v
+        _set_cache_layer(cache, idx, k_new, v_new)
+        new_layers.append((k_new, v_new))
+    return _rebuild_cache(cache, new_layers)
+
+
+def _shift_along_seq(t: torch.Tensor, shift: int) -> torch.Tensor:
+    """Shift a (..., seq, head_dim) tensor by ``shift`` along the seq axis.
+
+    Positions vacated by the shift are filled with zeros. The output
+    keeps the same shape as the input.
+    """
+    if shift == 0 or t.shape[-2] == 0:
+        return t.clone()
+    seq = t.shape[-2]
+    out = torch.zeros_like(t)
+    if shift > 0:
+        # Push contents forward: out[..., shift:, :] <- t[..., :seq-shift, :]
+        keep = max(0, seq - shift)
+        if keep > 0:
+            out[..., shift:shift + keep, :] = t[..., :keep, :]
+    else:
+        # shift < 0: pull contents back; out[..., :seq+shift, :] <- t[..., -shift:, :]
+        s = -shift
+        keep = max(0, seq - s)
+        if keep > 0:
+            out[..., :keep, :] = t[..., s:s + keep, :]
+    return out
+
+
+def _cst_layer_indices(scope: str, n_layers: int) -> set[int]:
+    """Pick which layer indices CST should staleify."""
+    s = (scope or "all").strip().lower()
+    if n_layers <= 0:
+        return set()
+    if s == "all":
+        return set(range(n_layers))
+    if s == "first":
+        return {0}
+    if s == "last":
+        return {n_layers - 1}
+    if s in ("middle", "mid"):
+        return {n_layers // 2}
+    return set(range(n_layers))
+
+
+def _stale_cache(cache: Any, scope: str) -> Any:
+    """CST: replace selected layers' K/V with a 1-step-stale snapshot.
+
+    A "1-step-stale" snapshot for a cache of length ``T`` is the cache
+    of length ``T-1`` — i.e. drop the most recent appended position.
+    The model then attends as if the most recent token had not been
+    written into the cache yet.
+    """
+    layer_pairs = list(_iter_cache_layers(cache))
+    n_layers = len(layer_pairs)
+    targets = _cst_layer_indices(scope, n_layers)
+
+    new_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for idx, k, v in layer_pairs:
+        if idx in targets and torch.is_tensor(k) and torch.is_tensor(v) and k.dim() >= 3:
+            seq = k.shape[-2]
+            if seq >= 2:
+                k_new = k[..., :-1, :]
+                v_new = v[..., :-1, :]
+            else:
+                # No prior step to revert to; zero the slot so the
+                # operator still produces an observable change.
+                k_new = torch.zeros_like(k)
+                v_new = torch.zeros_like(v)
+        else:
+            k_new, v_new = k, v
+        _set_cache_layer(cache, idx, k_new, v_new)
+        new_layers.append((k_new, v_new))
+    return _rebuild_cache(cache, new_layers)

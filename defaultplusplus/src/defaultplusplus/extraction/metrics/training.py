@@ -13,6 +13,19 @@ from ..inspector import ModelInspector
 class TrainingMetrics(MetricModule):
     """Collect loss, learning-rate, memory, and runtime stats."""
 
+    _STATIC_KEYS = (
+        "train_loss",
+        "loss",
+        "train_learning_rate",
+        "runtime_step_time",
+        "runtime_steps_per_sec",
+        "runtime_memory_alloc_mb",
+        "runtime_memory_reserved_mb",
+    )
+
+    def static_feature_names(self) -> list[str]:
+        return list(self._STATIC_KEYS)
+
     def collect(
         self,
         *,

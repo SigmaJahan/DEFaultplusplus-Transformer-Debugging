@@ -15,6 +15,20 @@ from ...config import ExtractionConfig
 class PositionalMetrics(MetricModule):
     """Split sequence into early/late windows and compute per-window performance."""
 
+    _STATIC_KEYS = (
+        "positional_accuracy_early",
+        "positional_accuracy_late",
+        "positional_accuracy_delta",
+        "positional_margin_early",
+        "positional_margin_late",
+        "positional_margin_delta",
+        "positional_loss_early",
+        "positional_loss_late",
+    )
+
+    def static_feature_names(self) -> list[str]:
+        return list(self._STATIC_KEYS)
+
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
         super().__init__(inspector)
         cfg = config or ExtractionConfig()

@@ -84,12 +84,64 @@ class EpochAggregator:
 # ---------------------------------------------------------------------------
 # Windowed features
 # ---------------------------------------------------------------------------
+#
+# ``WINDOW_DEFINITION`` is kept for backward compatibility (the paper's
+# 10-epoch schedule maps 1-3 / 4-7 / 8-10 to early / mid / late), but the
+# main implementation is :func:`compute_window_ranges`, which splits
+# the *actual* epoch count into thirds. That way a 5-epoch fine-tune and
+# a 50-epoch fine-tune produce features with the same column names and
+# semantically comparable definitions ("first third / middle third / last
+# third of training") so the diagnostic model can score either one.
 
+WINDOW_NAMES = ("early", "mid", "late")
+
+# Legacy fixed mapping for the paper's 10-epoch schedule. Use
+# :func:`compute_window_ranges` for runs of arbitrary length.
 WINDOW_DEFINITION = {
     'early': (1, 3),
     'mid': (4, 7),
     'late': (8, 10),
 }
+
+
+def compute_window_ranges(total_epochs: int) -> Dict[str, Tuple[int, int]]:
+    """Return inclusive ``(start_epoch, end_epoch)`` ranges per window.
+
+    The training run is split into three roughly-equal thirds —
+    ``early`` covers the first third, ``mid`` the middle third, and
+    ``late`` the last third. Edge cases:
+
+      * ``total_epochs <= 0`` returns empty ranges so callers degrade
+        gracefully on uninitialized state.
+      * ``total_epochs < 3`` collapses thirds onto whatever epochs are
+        present (each window still gets at least one epoch when
+        possible) so we don't silently drop a window's column from the
+        feature dict.
+
+    Epochs are 1-indexed because that is the convention
+    :class:`EpochAggregator` uses when it appends ``(epoch_index + 1, value)``
+    pairs to ``metric_history``.
+    """
+    if total_epochs <= 0:
+        return {name: (1, 0) for name in WINDOW_NAMES}  # empty ranges
+
+    if total_epochs == 1:
+        return {"early": (1, 1), "mid": (1, 1), "late": (1, 1)}
+    if total_epochs == 2:
+        return {"early": (1, 1), "mid": (1, 2), "late": (2, 2)}
+
+    third = total_epochs // 3
+    early_start = 1
+    early_end = third
+    mid_start = third + 1
+    mid_end = 2 * third
+    late_start = 2 * third + 1
+    late_end = total_epochs
+    return {
+        "early": (early_start, early_end),
+        "mid": (mid_start, mid_end),
+        "late": (late_start, late_end),
+    }
 
 
 def _linear_regression_slope(xs: Iterable[float], ys: Iterable[float]) -> float:
@@ -115,10 +167,18 @@ def compute_window_features(
     metric_history: Dict[str, List[Tuple[int, float]]],
     total_epochs: int,
 ) -> Dict[str, float]:
-    """Compress per-epoch means into canonical window features."""
+    """Compress per-epoch means into windowed features.
+
+    Windows are split as fractions of ``total_epochs`` (see
+    :func:`compute_window_ranges`) so the same column names describe
+    ``early`` / ``mid`` / ``late`` thirds of the run regardless of
+    whether it lasted 5, 10, or 50 epochs.
+    """
     features: Dict[str, float] = {}
     if total_epochs == 0:
         return features
+
+    ranges = compute_window_ranges(total_epochs)
 
     for metric, history in metric_history.items():
         if not history:
@@ -126,7 +186,7 @@ def compute_window_features(
 
         epoch_to_mean = {epoch: value for epoch, value in history}
 
-        for window_name, (start_epoch, end_epoch) in WINDOW_DEFINITION.items():
+        for window_name, (start_epoch, end_epoch) in ranges.items():
             epochs = [e for e in range(start_epoch, end_epoch + 1)
                       if e <= total_epochs and e in epoch_to_mean]
             if not epochs:

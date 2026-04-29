@@ -1,5 +1,7 @@
 # DEFault++
 
+[![CI](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml)
+
 Hierarchical fault diagnosis and runtime feature extraction for
 HuggingFace transformers.
 

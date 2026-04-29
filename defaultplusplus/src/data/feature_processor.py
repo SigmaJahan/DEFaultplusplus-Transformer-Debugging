@@ -51,7 +51,7 @@ LAYER_RE = re.compile(r"^(.*?)_l(\d+)_(.*)$")   # matches ffn_delta_l3_mean_fina
 
 # Step 6 delegates to feature_groups.assign_feature_to_group, which encodes
 # the Table 7.7 mapping. The local copy that previously lived here drifted
-# from the canonical mapping and has been removed.
+# from the official mapping and has been removed.
 from .feature_groups import assign_feature_to_group as _assign_group  # noqa: E402
 
 

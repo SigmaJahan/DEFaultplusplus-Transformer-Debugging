@@ -1,5 +1,7 @@
 # defaultplusplus
 
+[![CI](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml)
+
 Hierarchical fault diagnosis and runtime feature extraction for
 HuggingFace transformers.
 
@@ -78,7 +80,30 @@ FeatureExtractor(bert_model, arch="decoder")
 # ValueError: Requested arch='decoder' but the inspector detected 'encoder'.
 ```
 
-Encoder-decoder architectures (T5, BART) are out of contract for v1.
+Encoder-decoder architectures (T5, BART) are out of scope for v1.
+
+### Supported benchmark tasks
+
+The kill-test scoring is registry-driven (one `TaskMetricSpec` per
+task). The composite per task follows the standard GLUE / LM
+reporting convention so kill decisions are comparable to the
+literature:
+
+| Task           | Arch     | Composite                         | Direction |
+|----------------|----------|-----------------------------------|-----------|
+| `sst2`         | encoder  | accuracy                          | ↑         |
+| `qnli`         | encoder  | accuracy                          | ↑         |
+| `rte`          | encoder  | accuracy                          | ↑         |
+| `mnli`         | encoder  | accuracy (matched validation)     | ↑         |
+| `cola`         | encoder  | Matthews correlation              | ↑         |
+| `mrpc`         | encoder  | (accuracy + F1) / 2               | ↑         |
+| `qqp`          | encoder  | (accuracy + F1) / 2               | ↑         |
+| `stsb`         | encoder  | (Pearson + Spearman) / 2          | ↑         |
+| `wikitext2`    | decoder  | eval_loss                         | ↓         |
+
+Adding a new task means registering one `TaskMetricSpec` in
+[`benchmark/task_metrics.py`](src/defaultplusplus/benchmark/task_metrics.py);
+nothing else in the runner / CLI changes.
 
 ### Output keys
 
@@ -107,6 +132,41 @@ python examples/extract_during_finetune.py
 python examples/extract_with_hf_trainer.py
 ```
 
+## Benchmark CLI
+
+Once `[hf]` is installed, `defaultpp-benchmark` runs a paired
+clean / faulty fine-tune for every (model × task × operator ×
+severity × seed-tuple) configuration and writes one CSV row per
+killed mutant. The kill test uses the per-task scalar from the
+metric registry (see Supported benchmark tasks above).
+
+```bash
+defaultpp-benchmark \
+  --arch encoder \
+  --models bert-base-uncased \
+  --tasks sst2 \
+  --operators QZQ,FCA \
+  --severities low \
+  --seeds 42,123,456,789,101112 \
+  --output data/encoder_benchmark.csv
+```
+
+A configuration is **discarded** (not crashed) when:
+
+- the pre-flight `StructuralVerifier` reports the injector targets no
+  parameters or fails to restore on exit,
+- the faulty fine-tune raises an exception on any seed, or
+- any seed returns a non-finite metric (NaN / ±Inf).
+
+Discarded configs are skipped from the CSV and recorded in
+`<output>.discarded.jsonl` (one record per line) so they can be
+revisited later. The CLI prints a summary at the end:
+
+```
+[defaultpp-benchmark] wrote 124/130 row(s) to data/encoder_benchmark.csv; 6 discarded
+[defaultpp-benchmark] discard summary: runtime_error=4, verifier_failed=2
+```
+
 ## Layout
 
 ```
@@ -122,16 +182,20 @@ defaultplusplus/
       inspector.py             auto-discovers transformer structure
       collector.py             orchestrates per-step metric modules
       aggregator.py            Welford running statistics
+      sublayer_capture.py      forward hooks for FFN/LN/Q/K/V taps
       feature_construction.py  layer / step / epoch / phase aggregation
       metrics/                 attention, gradient, logit, structural, ...
     deform/                    mutation engine (research)
-      operators.py             45 mutation operators
+      operators.py             45 mutation operators (catalog)
+      operator_impls/          per-operator injector implementations
       injection.py             StaticFault / DynamicFault context managers
       validation.py            structural verifier + sign-flip kill test
       fault_config.py          FaultConfiguration / Mutant types
     benchmark/                 benchmark construction (research)
+      cli.py                   defaultpp-benchmark entry point
       config_grid.py
-      runner.py
+      runner.py                paired runs + crash isolation
+      task_metrics.py          per-task kill-test metric registry
       dataset_writer.py
     diagnosis/                 reserved for runtime diagnostic model
     pretrained/                reserved for shipped checkpoints
@@ -143,7 +207,7 @@ defaultplusplus/
   configs/base.yaml                       hyperparameter config
   examples/                               runnable demos
   scripts/                                local + Compute Canada scripts
-  tests/                                  pytest suite (58 tests)
+  tests/                                  pytest suite (134 tests)
   pyproject.toml                          PEP 621 metadata + build config
   LICENSE                                 Apache-2.0
   CHANGELOG.md                            version history

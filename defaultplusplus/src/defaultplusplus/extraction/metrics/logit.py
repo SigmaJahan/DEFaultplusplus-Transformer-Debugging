@@ -17,6 +17,29 @@ from ...config import ExtractionConfig
 class LogitMetrics(MetricModule):
     """Logit-based performance and health metrics."""
 
+    _STATIC_KEYS = (
+        "accuracy",
+        "f1_score",
+        "precision",
+        "recall",
+        "logit_nan_ratio",
+        "logit_inf_ratio",
+        "nll",
+        "ece",
+        "logit_entropy",
+        "logit_confidence_mean",
+        "logit_kl_uniform",
+        "logit_margin_mean",
+        "logit_margin_var",
+        "logit_margin_p25",
+        "logit_margin_p50",
+        "logit_margin_p75",
+        "logit_margin_min",
+    )
+
+    def static_feature_names(self) -> list[str]:
+        return list(self._STATIC_KEYS)
+
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
         super().__init__(inspector)
         cfg = config or ExtractionConfig()

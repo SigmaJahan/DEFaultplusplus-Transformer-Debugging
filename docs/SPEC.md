@@ -7,7 +7,7 @@ walk-throughs, research-side commands) lives in the READMEs and
 [`defaultplusplus/RESEARCH.md`](../defaultplusplus/RESEARCH.md).
 
 The scientific source of truth is [`../DEFault++.pdf`](../DEFault++.pdf).
-This file does not restate it. It pins the engineering contract built
+This file does not restate it. It pins the engineering API built
 on top of it.
 
 ---
@@ -17,7 +17,7 @@ on top of it.
 DEFault++ is a single-run, transformer-specific telemetry and diagnosis
 system. Four decisions shape it.
 
-### 1.1 Canonical semantic feature schema
+### 1.1 Stable semantic feature schema
 
 The invariant part of DEFault++ is the *meaning* of the measurements:
 attention entropy, padding / future leakage, QKV alignment, pre-softmax
@@ -38,7 +38,7 @@ checkpoint name. The two supported families are:
   GPT-Neo-style decoders.
 
 Other families (encoder-decoder T5 / BART, RetNet, Mamba, MoE) are
-out of contract for v1. They must fail closed at construction time
+out of scope for v1. They must fail closed at construction time
 with an explicit unsupported-model error. This is implemented in
 `FeatureExtractor.__init__`.
 
@@ -46,15 +46,15 @@ with an explicit unsupported-model error. This is implemented in
 
 Benchmark construction uses paired clean and faulty fine-tuning runs
 to generate labeled training examples. That is correct for offline
-benchmark generation. It is **not** the runtime contract. The runtime
+benchmark generation. It is **not** the runtime API. The runtime
 extractor must turn one user run into anomaly features against a
 learned clean reference. Any feature, preprocessing step, or diagnosis
 path that depends on a matched clean run at inference time is out of
-contract for runtime v1.
+scope for runtime v1.
 
 ### 1.4 HF outputs + targeted hooks + sampled profiler + streaming aggregation
 
-The extraction substrate is fixed:
+The extraction layer is fixed:
 
 - HuggingFace `ModelOutput` objects already expose `hidden_states` and
   `attentions` when requested. Use them.
@@ -75,6 +75,48 @@ The extraction substrate is fixed:
 The output of `FeatureExtractor.finalize()` is a flat
 `dict[str, float]` keyed by the names below. Every key is in scope
 `runtime_v1` unless explicitly tagged `research_only` or `post_v1`.
+
+### 2.0 Fixed `feature_names` schema
+
+`FeatureExtractor.feature_names` returns a fully-determined list of
+output keys *before any training step has run*. Three guarantees:
+
+1. **Length-stable across runs.** The list is identical for any
+   (architecture, num_layers, sampled-layer strategy, parameter
+   groups) tuple regardless of how many epochs the run lasts or
+   which validation metrics the user records.
+2. **Inspector-driven.** Layer-indexed keys (`L{i}_...`) expand
+   against `inspector.get_sampled_layer_indices()` so a 12-layer
+   BERT and a 6-layer DistilBERT each get the right per-layer keys.
+3. **Self-padding.** `finalize()` fills any column the runtime did
+   not emit with `0.0`, so the returned dict's keys equal
+   `feature_names` exactly. Downstream classifiers can pin their
+   input dimensionality at training time without depending on which
+   task / metric / cadence produced a particular row.
+
+The list is built by walking each metric module's
+`static_feature_names()` declaration, crossing it with the
+windowed-feature suffixes (`_early_mean`, `_mid_slope`, `_final`,
+etc.), and unioning in every `val_<raw>` key declared by the task
+registry (so CoLA's `val_matthews_correlation_*` and STS-B's
+`val_pearson_*` / `val_spearmanr_*` are in the schema even if the
+user never runs those tasks).
+
+`compute_window_ranges(total_epochs)` splits the run into thirds —
+`early` is the first third, `mid` the middle third, `late` the
+last — so the same column names describe a 5-epoch and a 50-epoch
+run with semantically comparable definitions. The paper's 10-epoch
+schedule maps to `(1-3)`, `(4-6)`, `(7-10)` (a one-epoch shift from
+the legacy fixed `(1-3)/(4-7)/(8-10)` mapping; the dataset writer
+re-runs the windowed aggregator so historical CSVs may need
+regenerating against the new windows).
+
+`MetricCollector.validate_feature_names(expected)` raises
+`ValueError` with a missing/unexpected diff when the live schema
+diverges from a saved reference — used by
+`defaultplusplus.diagnosis.load_pretrained()` to fail closed when
+the runtime extractor cannot produce the same columns the
+pretrained classifier was trained on.
 
 ### Status legend
 
@@ -97,7 +139,7 @@ The output of `FeatureExtractor.finalize()` is a flat
   every layer unconditionally.
 - Aggregation outputs (`*_mean`, `*_var`, `*_count`, `*_final`,
   `*_slope`, `val_*`, windowed summaries) are derived from the schema
-  below; they do not constitute independent contract entries unless
+  below; they do not constitute independent schema entries unless
   listed explicitly.
 
 ### 2.1 Training dynamics
@@ -133,7 +175,7 @@ The output of `FeatureExtractor.finalize()` is a flat
 
 ### 2.3 Attention and score signals
 
-Sampled attention-layer patterns are part of the contract. `{layer_idx}`
+Sampled attention-layer patterns are part of the schema. `{layer_idx}`
 is sampled using the runtime inspector strategy.
 
 | Metric or pattern | Meaning | Availability | Status | Scope |
@@ -210,7 +252,72 @@ global aliases above.
 | Metric | Meaning | Availability | Status | Scope |
 |---|---|---|---|---|
 | `cache_hidden_sim` | Consecutive KV-key similarity proxy | decoder | `approximate` | `runtime_v1` |
-| `cache_nll_divergence` | Cache-specific NLL divergence | decoder | `not_available` | `post_v1` |
+| `cache_nll_divergence` | Mean symmetric KL between fresh and cached next-token distributions, sampled at a few positions per probe step | decoder | `exact` | `runtime_v1` |
+
+### 2.9 Benchmark construction interface
+
+The runtime feature schema above is the v1 interface that downstream
+diagnostic models pin against. The benchmark construction pipeline
+(under `defaultplusplus.benchmark/`, exposed via `defaultpp-benchmark`)
+emits one labeled dataset row per **killed mutant** by running paired
+clean / faulty fine-tunes and applying the exact one-sided sign-flip
+permutation test from `deform.validation.is_killed`.
+
+### 2.9.1 Kill-test scoring
+
+The sign-flip test consumes one scalar per (clean, faulty) seed pair.
+For each task the scalar is fixed by
+[`benchmark.task_metrics.TASK_METRICS`](../defaultplusplus/src/defaultplusplus/benchmark/task_metrics.py)
+and follows the standard reporting convention so kill decisions are
+comparable to the literature:
+
+| Task        | Arch    | Composite                       | `higher_is_better` |
+|-------------|---------|---------------------------------|--------------------|
+| `sst2`      | encoder | accuracy                        | true               |
+| `qnli`      | encoder | accuracy                        | true               |
+| `rte`       | encoder | accuracy                        | true               |
+| `mnli`      | encoder | matched accuracy                | true               |
+| `cola`      | encoder | Matthews correlation            | true               |
+| `mrpc`      | encoder | (accuracy + F1) / 2             | true               |
+| `qqp`       | encoder | (accuracy + F1) / 2             | true               |
+| `stsb`      | encoder | (Pearson + Spearman) / 2        | true               |
+| `wikitext2` | decoder | eval loss                       | false              |
+
+Adding a new task is a one-entry registration in
+`benchmark/task_metrics.py`. The `TaskMetricSpec` declares which raw
+metrics the HF Trainer's `compute_metrics` callable must emit and how
+they collapse into the kill-test scalar. The runner uses the spec's
+`higher_is_better` per configuration, so encoder + decoder tasks can
+mix in a single CLI invocation.
+
+The n=5 matched-seed design is fixed by the paper: it is the
+smallest n that admits an exact one-sided sign-flip test at α=0.05
+(minimum p-value 1/2^5 ≈ 0.031). The runner never aggregates a
+partial set of seeds, so the kill-test guarantee is preserved for
+every dataset row.
+
+### 2.9.2 Crash isolation and discard logging
+
+A benchmark batch touches dozens of operators per model; some of them
+genuinely break the model (NaN logits, OOM, shape mismatch from a
+fault that the structural verifier should otherwise catch). The
+runner never lets a single configuration take down the whole batch.
+Three discard paths are recognized:
+
+| `RunStatus`        | When |
+|--------------------|------|
+| `verifier_failed`  | the pre-flight `StructuralVerifier` reports `ok=False` (no targets, restoration broken, dynamic wrap leaked outside the intended set) |
+| `runtime_error`    | the faulty fine-tune raises an exception on any seed |
+| `invalid_metric`   | any seed returns `NaN` or `±Inf` for the test metric |
+
+Discarded configurations carry `mutant=None` and a human-readable
+`discard_reason`. The CLI skips them from the output CSV and writes
+one JSON record per discard to `<output>.discarded.jsonl` so the
+batch leaves an audit trail and the failing operators can be
+revisited later. **Clean-run failures bubble up** — they are
+environment problems (dataset missing, model wouldn't load) rather
+than faults, and the operator running the benchmark needs to see
+them.
 
 ---
 
@@ -223,8 +330,6 @@ schema above (with the corresponding metric promoted from
 
 ### 3.1 Schema gaps to close
 
-- **`cache_nll_divergence`** — currently `not_available` / `post_v1`.
-  Requires a fresh-vs-cached forward at sampled generation steps.
 - **`L{layer_idx}_attention_score_*`** — currently `approximate`. The
   log-prob proxy on attention probabilities is still emitted; the
   exact pre-softmax score statistics are now emitted in parallel via
@@ -244,21 +349,20 @@ schema above (with the corresponding metric promoted from
   encoder + decoder diagnostic models as the v1 release blob. Code
   drop into `defaultplusplus/pretrained/weights/` plus a
   `defaultplusplus.diagnosis.load_pretrained()` accessor.
-- **`MetricCollector.feature_names` as a canonical contract** — the
-  property currently returns whatever was emitted in the last epoch.
-  Promote it to a frozen, schema-checked list so a downstream
-  classifier can pin the input dimensionality at training time.
 
 ### 3.3 Benchmark items
 
-- **`make benchmark`** — wire the new `defaultplusplus.benchmark`
-  pipeline through to a single command that produces `data/*.csv` from
-  scratch, replacing the legacy FrankenFormer probe code.
-- **Operator implementation directory** — the `OPERATORS` catalog
-  names 45 mutations but the per-operator injection classes still need
-  to be split into `defaultplusplus/deform/operator_impls/<id>.py` so
-  the benchmark runner can resolve injectors by ID without a custom
-  `injector_factory` callable.
+The end-to-end pipeline now ships as the `defaultpp-benchmark` console
+script (see [`benchmark.cli`](../defaultplusplus/src/defaultplusplus/benchmark/cli.py))
+with crash isolation and per-task metric registry; per-operator
+injectors live under `deform/operator_impls/` with full coverage of
+all 45 catalog entries. Remaining benchmark-side work:
+
+- **Public dataset distribution** — the generated `data/*.csv` is
+  multiple gigabytes and cannot live in the wheel. Ship a
+  `defaultplusplus.data.download_bench(version="v1")` that pulls from
+  Zenodo / HF Hub with checksum verification, and a
+  `defaultpp-bench-download` console script.
 
 ### 3.4 Out of v1 scope
 
@@ -281,7 +385,7 @@ Schema version follows the package version (`defaultplusplus.__version__`).
   `approximate` / `not_available` to `exact`, or adds a new entry
   whose absence would have been silently ignored.
 - A **PATCH** bump fixes a metric implementation without changing its
-  output contract.
+  output schema.
 
 Changes to this document must be logged in
 [`../defaultplusplus/CHANGELOG.md`](../defaultplusplus/CHANGELOG.md).

@@ -1,4 +1,4 @@
-"""Canonical paths used by the research-side training and evaluation
+"""Standard paths used by the research-side training and evaluation
 drivers. Resolves locations based on this file's position rather than
 the current working directory, so scripts work no matter where they are
 invoked from.

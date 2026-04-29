@@ -15,6 +15,16 @@ from ...config import ExtractionConfig
 class GradientMetrics(MetricModule):
     """Gradient norms, update ratios, vanishing/exploding detection."""
 
+    _FIXED_KEYS = (
+        "grad_norm_total",
+        "grad_abs_min",
+        "grad_abs_max",
+        "grad_zero_ratio",
+        "gradient_vanish",
+        "gradient_explode",
+        "update_ratio_total",
+    )
+
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
         super().__init__(inspector)
         cfg = config or ExtractionConfig()
@@ -22,6 +32,15 @@ class GradientMetrics(MetricModule):
         self.grad_explode_threshold = cfg.grad_explode_threshold
         self.grad_activity_threshold = cfg.grad_activity_threshold
         self._previous_params: Dict[str, torch.Tensor] = {}
+
+    def static_feature_names(self) -> list[str]:
+        groups = self.inspector.get_parameter_groups()
+        names = list(self._FIXED_KEYS)
+        for group in groups:
+            names.append(f"grad_norm_{group}")
+            names.append(f"update_active_{group}")
+            names.append(f"update_ratio_{group}")
+        return names
 
     def collect(
         self,

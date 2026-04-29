@@ -45,6 +45,22 @@ class MetricModule(ABC):
     ) -> Dict[str, float]:
         ...
 
+    def static_feature_names(self) -> list[str]:
+        """Return the set of raw metric keys this module always emits.
+
+        The list is computed from the inspector (number of sampled
+        layers, parameter groups) — it does not require any
+        ``collect()`` call to have happened. Used by the fixed
+        ``feature_names`` schema so a downstream classifier can pin
+        its input dimensionality before any training run.
+
+        Subclasses override to declare exactly which keys they emit.
+        Modules that emit nothing (or whose emission set depends on
+        unobservable runtime state) return ``[]``; those keys are
+        treated as best-effort and not part of the fixed schema.
+        """
+        return []
+
 
 # ---------------------------------------------------------------------------
 # Shared utilities

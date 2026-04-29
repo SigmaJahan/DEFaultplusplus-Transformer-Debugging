@@ -56,7 +56,7 @@ class MetricCollector:
 
         # Decoder-only module
         if inspector.arch_family == 'decoder':
-            self._modules.append(CacheMetrics(inspector))
+            self._modules.append(CacheMetrics(inspector, self.config))
 
         self.epoch_aggregator = EpochAggregator()
         self.running_metrics = RunningMetrics(window_size=self.config.gradient_window)
@@ -117,10 +117,13 @@ class MetricCollector:
         metrics['gradient_variance'] = self.running_metrics.get_variance('grad_norm_total')
         metrics['gradient_noise_scale'] = self.running_metrics.get_noise_scale('grad_norm_total')
 
+        # ``batch_idx`` / ``epoch`` are step bookkeeping the caller may
+        # log; they are *not* real metrics, so they enter the per-step
+        # output dict but never the aggregator's history. Skipping them
+        # here keeps them out of the fixed feature_names schema.
+        self.epoch_aggregator.update(metrics)
         metrics['batch_idx'] = batch_idx
         metrics['epoch'] = epoch
-
-        self.epoch_aggregator.update(metrics)
         # Captures from this forward have been consumed; drop refs so the
         # next step starts from a clean slate.
         self.sublayer_capture.clear()
@@ -166,7 +169,12 @@ class MetricCollector:
 
         if self.validation_history:
             last_val = self.validation_history[-1]
-            for key in ('val_accuracy', 'val_loss', 'val_perplexity', 'val_f1_score'):
+            # Emit ``final_<val_*>`` for every val_* key the registry knows
+            # about plus the four legacy aliases. Keys not present in the
+            # actual run are skipped here; the fixed schema does still
+            # declare them so downstream classifiers see a stable column
+            # set across every task.
+            for key in _registry_validation_keys():
                 if key in last_val:
                     final[f'final_{key}'] = last_val[key]
 
@@ -177,11 +185,48 @@ class MetricCollector:
 
     @property
     def feature_names(self) -> List[str]:
-        """Return deterministic list of feature names from the last epoch."""
-        if not self.epoch_metrics_history:
-            return []
-        last = self.epoch_metrics_history[-1]
-        return sorted(k for k in last.keys() if k != 'epoch')
+        """Fully-determined feature names for this collector.
+
+        The list is computable *before* any ``collect_step`` call and is
+        stable across runs of the same (architecture, num_layers,
+        sampled-layer strategy, parameter groups). Built by walking
+        every metric module's :meth:`static_feature_names` declaration
+        and crossing it with the epoch aggregator's
+        ``_mean`` / ``_var`` / ``_count`` suffixes plus the
+        finalize-time keys produced by :meth:`get_final_features`.
+
+        Use :meth:`validate_feature_names` to fail closed when a
+        downstream classifier's expected schema doesn't match.
+        """
+        return build_feature_names(
+            modules=self._modules,
+            inspector=self.inspector,
+        )
+
+    def validate_feature_names(self, expected: List[str]) -> None:
+        """Raise ``ValueError`` if the live schema diverges from ``expected``.
+
+        Used by downstream loaders (e.g. ``diagnosis.load_pretrained``)
+        to verify that the runtime extractor produces the same feature
+        columns the pretrained classifier was trained on.
+        """
+        live = self.feature_names
+        live_set = set(live)
+        expected_set = set(expected)
+        missing = sorted(expected_set - live_set)
+        unexpected = sorted(live_set - expected_set)
+        if not missing and not unexpected:
+            return
+        parts = []
+        if missing:
+            parts.append(f"missing={missing[:8]}{'...' if len(missing) > 8 else ''}")
+        if unexpected:
+            parts.append(f"unexpected={unexpected[:8]}{'...' if len(unexpected) > 8 else ''}")
+        raise ValueError(
+            "feature_names schema mismatch (live vs expected): "
+            + "; ".join(parts)
+            + f" — total live={len(live)}, expected={len(expected)}."
+        )
 
     def reset(self):
         """Reset all state."""
@@ -193,3 +238,130 @@ class MetricCollector:
         self.running_metrics.reset()
         # Tear down hooks; ``FeatureExtractor`` reinstalls them on reuse.
         self.sublayer_capture.remove()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Fixed feature_names schema
+# ─────────────────────────────────────────────────────────────────────────
+# Aggregator behavior we mirror here lives in
+# ``extraction.aggregator.EpochAggregator.finalize_epoch`` (per-epoch
+# mean/var/count) and ``compute_window_features`` (early/mid/late +
+# slope + final). When you change either of those, this list must move
+# in lockstep.
+
+_WINDOW_NAMES = ("early", "mid", "late")
+
+# Validation keys recognized by the ``final_<key>`` aliasing path in
+# ``get_final_features``. The full set of windowed val_* keys is built
+# dynamically from the task registry by :func:`_registry_validation_keys`
+# so the schema covers every task DEFault++ supports without depending on
+# the user passing the right metric names to ``record_validation``.
+# Keep ``val_perplexity`` as a generic decoder shorthand even though no
+# registry task emits it directly — HF callers sometimes derive it
+# alongside ``val_loss`` and forward both.
+_LEGACY_VALIDATION_FINAL_KEYS = ("val_accuracy", "val_loss", "val_perplexity")
+
+_FINAL_FIXED_KEYS = (
+    "final_train_loss",
+    "final_train_accuracy",
+    "final_grad_norm_total",
+    "best_train_accuracy",
+    "best_train_loss",
+    "final_loss",
+    "final_accuracy",
+)
+
+
+def _registry_validation_keys() -> set[str]:
+    """Return the union of ``val_<raw_metric>`` keys across the task registry.
+
+    Reading this from :mod:`benchmark.task_metrics` rather than from a
+    static list means the schema automatically picks up new tasks as
+    they are registered — the user never has to remember to forward an
+    extra metric to :meth:`FeatureExtractor.record_validation`.
+    """
+    keys = set(_LEGACY_VALIDATION_FINAL_KEYS)
+    try:
+        # Local import: collector.py is in the runtime extraction path
+        # and must not pull in the benchmark CLI module at import time.
+        from ..benchmark.task_metrics import TASK_METRICS
+
+        for spec in TASK_METRICS.values():
+            for raw in spec.raw_metrics:
+                keys.add(f"val_{raw}")
+    except ImportError:  # pragma: no cover - benchmark module always present
+        pass
+    return keys
+
+
+def build_feature_names(
+    *,
+    modules: List[Any],
+    inspector: ModelInspector,
+) -> List[str]:
+    """Return the schema-pinned feature_names list for a collector.
+
+    The output is the union of:
+      * per-step keys each metric module declares via
+        ``static_feature_names`` (varies with arch / num_layers);
+      * gradient running-window extras
+        (``<grad_norm_*>_window_var``, ``<grad_norm_*>_gns``,
+        ``gradient_variance``, ``gradient_noise_scale``);
+      * epoch aggregator suffixes (``<key>_mean / _var / _count``);
+      * windowed features (``<key>_early_mean / _early_slope`` etc.,
+        plus ``<key>_final``);
+      * finalize-time fixed keys (``final_train_loss`` etc.) and the
+        validation-prefixed keys when the run records them.
+
+    The result is sorted for stable serialization. Ordering is fixed
+    across runs, so the diagnostic model's input layer can be pinned
+    against this list at training time.
+    """
+    # 1. Per-step raw keys from each metric module.
+    raw_step: set[str] = set()
+    for module in modules:
+        try:
+            raw_step.update(module.static_feature_names())
+        except Exception:  # pragma: no cover - defensive
+            continue
+
+    # Running-window extras emitted in ``MetricCollector.collect_step``
+    # for every grad_norm_* key the gradient module produced.
+    grad_norm_keys = {k for k in raw_step if k.startswith("grad_norm_")}
+    for key in grad_norm_keys:
+        raw_step.add(f"{key}_window_var")
+        raw_step.add(f"{key}_gns")
+    raw_step.add("gradient_variance")
+    raw_step.add("gradient_noise_scale")
+
+    # 2. Windowed features emitted by ``compute_window_features``:
+    # ``<key>_<window>_mean / _<window>_slope`` plus ``<key>_final``,
+    # keyed by the raw step name (the aggregator's metric_history is
+    # keyed that way).
+    window_keys: set[str] = set()
+    for key in raw_step:
+        for win in _WINDOW_NAMES:
+            window_keys.add(f"{key}_{win}_mean")
+            window_keys.add(f"{key}_{win}_slope")
+        window_keys.add(f"{key}_final")
+
+    # Validation series: collector adds a ``val_`` prefix and feeds the
+    # same window features path. Keys come from the task registry so
+    # the schema covers every supported task without user wiring.
+    val_keys = _registry_validation_keys()
+    val_window_keys: set[str] = set()
+    for key in val_keys:
+        for win in _WINDOW_NAMES:
+            val_window_keys.add(f"{key}_{win}_mean")
+            val_window_keys.add(f"{key}_{win}_slope")
+        val_window_keys.add(f"{key}_final")
+
+    # 3. Finalize-time fixed keys plus per-validation final aliases.
+    # ``final_<val_*>`` covers the four legacy aliases AND every task
+    # registry key (so a CoLA run's ``final_val_matthews_correlation``
+    # is in the schema even though it isn't a legacy alias).
+    final_keys = set(_FINAL_FIXED_KEYS)
+    for key in val_keys:
+        final_keys.add(f"final_{key}")
+
+    return sorted(window_keys | val_window_keys | final_keys)

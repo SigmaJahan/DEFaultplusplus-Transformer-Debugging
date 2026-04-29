@@ -71,16 +71,20 @@ DEFaultplusplus-Transformer-Debugging/
         inspector.py                        auto-discovers HF model structure
         collector.py                        orchestrates per-step metric modules
         aggregator.py                       Welford running statistics
+        sublayer_capture.py                 forward hooks for FFN/LN/Q/K/V taps
         feature_construction.py             layer/step/epoch/phase aggregator
         metrics/{attention,gradient,...}.py per-component metric modules
       deform/
         operators.py                        45 mutation operators (Tables 7.1+7.2)
+        operator_impls/                     per-operator injector implementations
         injection.py                        StaticFault, DynamicFault context managers
         validation.py                       sign-flip permutation test, verifier
         fault_config.py                     FaultConfiguration, Mutant types
       benchmark/
+        cli.py                              defaultpp-benchmark entry point
         config_grid.py                      enumerate (model, task, op, layer, sev)
-        runner.py                           run_one_configuration
+        runner.py                           paired runs + crash isolation
+        task_metrics.py                     per-task kill-test metric registry
         dataset_writer.py                   shard CSV writer
       diagnosis/, pretrained/, processing/, ui/   reserved for runtime roadmap
 
@@ -107,7 +111,7 @@ DEFaultplusplus-Transformer-Debugging/
       build_pypi.sh                         clean → build → twine check → upload
       cc/                                   Compute Canada SLURM scripts
         env.sh setup_env.sh bench_array.sh merge_shards.sh train.sh ablation.sh
-    tests/                                  pytest suite (58 tests)
+    tests/                                  pytest suite (134 tests)
       conftest.py                           sys.path shim for src/ + src/defaultplusplus
       test_phase0_gate.py                   structural gate
       test_phase1_gate.py                   feature-group gate
@@ -425,18 +429,20 @@ tested without HF or GPUs (see `tests/test_dry_run.py`).
             scope="both")
    ```
 
-2. **Implement the injection** as a `StaticFault` or `DynamicFault`
-   subclass. Put it in `src/defaultplusplus/deform/operator_impls/<id>.py`
-   (create the dir if needed).
+2. **Wire the injection** in
+   [`src/defaultplusplus/deform/operator_impls/registry.py`](src/defaultplusplus/deform/operator_impls/registry.py):
+   add an entry to `_STATIC_SPECS` (parameter mutation), `_DYNAMIC_PATTERNS`
+   (forward wrap), or `_ATTRIBUTE_OPS` (model-attribute toggle), depending
+   on the operator's effect. `get_injector("XYZ")` will then return the
+   right injector class without further wiring; the benchmark runner
+   resolves operators by ID through the same path.
 
-3. **Register it** in a factory dict so `BenchmarkSpec` can resolve
-   the operator ID to the injector class. The current code looks up
-   operators by ID in `OPERATORS`; you'll wire your impl into the
-   `injector_factory` callable that `run_one_configuration` accepts.
-
-4. **Add a test** in `tests/test_dry_run.py` that imports the new
-   operator and verifies the structural verifier passes on a tiny
-   model.
+3. **Add coverage in two places**:
+   - `tests/test_operator_coverage.py` — append `"XYZ"` to
+     `EXPECTED_OPERATOR_IDS` so the locked 45-id list grows in step.
+   - `tests/test_dry_run.py::test_all_operator_injectors_construct_verify_and_restore`
+     iterates the full catalog, so the operator must construct on the
+     tiny model and pass the structural verifier with no extra work.
 
 ### Add a new metric
 
@@ -444,11 +450,41 @@ tested without HF or GPUs (see `tests/test_dry_run.py`).
    [`src/defaultplusplus/extraction/metrics/`](src/defaultplusplus/extraction/metrics/)
    (or create a new one inheriting `MetricModule`).
 2. The metric's `collect()` returns `dict[str, float]`. Keys must
-   follow the naming convention in the contract.
+   follow the naming convention in the schema.
 3. Update `../docs/SPEC.md` to add the metric and tag it as
    `exact` / `approximate` / `reconstructed`.
 4. Add a regex token in [`src/data/feature_groups.py`](src/data/feature_groups.py)
    so the column routes to the right group.
+
+### Add a new benchmark task
+
+The kill-test scoring is registry-driven so adding a task is a
+single-file change:
+
+1. **Register the spec** in
+   [`src/defaultplusplus/benchmark/task_metrics.py`](src/defaultplusplus/benchmark/task_metrics.py):
+
+   ```python
+   "mytask": TaskMetricSpec(
+       name="mytask", arch="encoder", higher_is_better=True,
+       raw_metrics=("accuracy", "f1"),  # what compute_metrics must emit
+       aggregator=lambda m: 0.5 * (m["eval_accuracy"] + m["eval_f1"]),
+   ),
+   ```
+
+2. **Wire the dataset loader** in
+   [`src/defaultplusplus/benchmark/cli.py`](src/defaultplusplus/benchmark/cli.py):
+   if the task uses GLUE, add the text column tuple to
+   `_glue_text_columns` and the `num_labels` to `_GLUE_NUM_LABELS`. For
+   non-GLUE encoder tasks or new decoder tasks, extend
+   `_load_encoder_dataset` / `_load_decoder_dataset`.
+
+3. **Add tests** in `tests/test_task_metrics.py` covering the
+   aggregator's arithmetic on a sample `eval_*` dict and the
+   `compute_metrics` callable on synthetic logits.
+
+The runner reads `higher_is_better` per configuration from the spec,
+so encoder + decoder tasks can mix in a single CLI invocation.
 
 ### Add a new feature group
 
@@ -504,7 +540,7 @@ EpochAggregator.update(per-step dict)      # Welford running stats
 EpochAggregator.finalize_epoch()           # mean/var/burst per metric
    │
    ▼ (at finalize)
-get_final_features()                       # contract keys, flat
+get_final_features()                       # schema keys, flat
    +
 build_feature_vector(TrainingTrace)        # layer/step/epoch/phase aggregates
    │

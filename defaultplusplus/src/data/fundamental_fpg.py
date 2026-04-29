@@ -422,7 +422,7 @@ def fundamental_to_feature_group_adjacency(
         present_groups.append(g)
         seen.add(g)
 
-    # Append non-structural groups in canonical order (Table 7.7).
+    # Append non-structural groups in fixed Table 7.7 order.
     for g in _NON_STRUCTURAL_GROUPS:
         if g not in seen:
             present_groups.append(g)

@@ -66,7 +66,7 @@ def test_feature_group_routing() -> None:
                      "representation_drift", "output", "cache",
                      "training_dynamics", "validation_perf"):
         assert expected in g, f"missing group: {expected}"
-    # The structural-group canonical list is intact.
+    # The structural-group set is intact.
     assert "attention" in STRUCTURAL_GROUPS
     assert "cache" in STRUCTURAL_GROUPS
 
