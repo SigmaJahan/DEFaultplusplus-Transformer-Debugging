@@ -52,7 +52,13 @@ def test_pyproject_toml():
     Version is read dynamically from ``defaultplusplus._version`` so
     it is not a literal field in ``[project]``.
     """
-    import tomllib
+    # tomllib only landed in Python 3.11; on 3.10 we fall back to the
+    # tomli package, which is the upstream of tomllib and has the
+    # identical API.
+    try:
+        import tomllib  # type: ignore[import-not-found]
+    except ImportError:
+        import tomli as tomllib  # type: ignore[no-redef]
 
     toml_path = ROOT / "pyproject.toml"
     assert toml_path.exists()

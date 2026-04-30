@@ -1,0 +1,3 @@
+# This file exists so the empty weights/ directory is tracked by git.
+# It is the destination for pretrained diagnostic-model weights, which
+# are downloaded on first use rather than shipped in the wheel.

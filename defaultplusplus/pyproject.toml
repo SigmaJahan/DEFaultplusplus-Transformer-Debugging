@@ -92,6 +92,9 @@ dev = [
     "ruff>=0.4",
     "build>=1.0",
     "twine>=5.0",
+    # Python 3.11 ships ``tomllib`` in the standard library; on 3.10 we
+    # fall back to ``tomli``, which is its identical-API upstream.
+    "tomli>=2.0; python_version < '3.11'",
 ]
 # Convenience extra for installing the full research stack.
 all = [
