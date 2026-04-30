@@ -193,7 +193,6 @@ is sampled using the runtime inspector strategy.
 | `L{layer_idx}_attention_mass_special_mean` / `..._mass_special_std` | Special-token attention mass | both | `exact` | `runtime_v1` |
 | `L{layer_idx}_head_similarity_mean` / `..._std` / `..._max` | Head-pattern similarity | both | `exact` | `runtime_v1` |
 | `L{layer_idx}_positional_recv_mean` / `..._var` / `..._skew` / `..._early` / `..._mid` / `..._late` / `..._mid_over_early` / `..._late_over_early` | Positional receiving profile from attention maps | both | `exact` | `runtime_v1` |
-| `L{layer_idx}_attention_score_var` / `..._score_skew` | Log-prob proxy for score-shape behavior | both | `approximate` | `runtime_v1` |
 | `L{layer_idx}_pre_softmax_score_mean` / `..._var` / `..._skew` / `..._kurt` | QK score statistics, computed from captured Q/K projection outputs | both | `exact` | `runtime_v1` |
 | `L{layer_idx}_qkv_alignment_qk_cos_mean` / `..._qv_cos_mean` / `..._kv_cos_mean` | Direct Q-K, Q-V, K-V head-averaged cosine similarity from post-projection captures | both | `exact` | `runtime_v1` |
 | Global aliases: `attention_entropy`, `attention_entropy_mean`, `mass_pad`, `mass_leak`, `cross_example_attention`, `attention_mass_future`, `pre_softmax_score_mean`, `pre_softmax_score_var`, `pre_softmax_score_skew`, `pre_softmax_score_kurt`, `head_similarity_mean`, `head_similarity_max`, `qkv_alignment_qk_cos_mean`, `qkv_alignment_qv_cos_mean`, `qkv_alignment_kv_cos_mean` | Aggregated across sampled layers | both | `exact` | `runtime_v1` |
@@ -330,12 +329,10 @@ schema above (with the corresponding metric promoted from
 
 ### 3.1 Schema gaps to close
 
-- **`L{layer_idx}_attention_score_*`** — currently `approximate`. The
-  log-prob proxy on attention probabilities is still emitted; the
-  exact pre-softmax score statistics are now emitted in parallel via
-  `pre_softmax_score_*` (promoted to `exact` by the sublayer hooks).
-  The legacy `attention_score_*` keys remain `approximate` until
-  consumers migrate.
+No open schema gaps. The legacy `attention_score_*` log-prob proxy
+was removed in v0.3.0; the exact `pre_softmax_score_*` family
+(produced via the sublayer hooks) is the only score-shape signal in
+the schema.
 
 ### 3.2 Runtime product items
 
@@ -345,10 +342,13 @@ schema above (with the corresponding metric promoted from
   feature vector into the same shape the diagnostic model expects.
   Lives in `defaultplusplus/processing/` (currently a reserved
   namespace).
-- **Pretrained diagnostic-model weights** — train and ship the
-  encoder + decoder diagnostic models as the v1 release blob. Code
-  drop into `defaultplusplus/pretrained/weights/` plus a
-  `defaultplusplus.diagnosis.load_pretrained()` accessor.
+- **Pretrained diagnostic-model weights** — the
+  `defaultplusplus.diagnosis` API (`load_pretrained`, `Predictor`,
+  `save_checkpoint`) and the training driver
+  (`scripts/train_diagnoser.py`) ship in v0.3.0. The actual `.pt`
+  files for the encoder + decoder models still need to be produced
+  by running the full benchmark + training and dropped into
+  `defaultplusplus/pretrained/weights/`.
 
 ### 3.3 Benchmark items
 

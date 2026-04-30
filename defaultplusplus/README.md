@@ -39,10 +39,47 @@ from defaultplusplus import (
     build_feature_vector,        # TrainingTrace -> fixed-length dict
     build_paired_feature_vector, # paired clean/faulty traces (research only)
 )
+
+from defaultplusplus.diagnosis import (
+    load_pretrained,             # arch -> Predictor (raises if no weights)
+    Predictor,                   # .predict(features) -> Diagnosis
+    Diagnosis,                   # 3-level result dataclass
+)
 ```
 
 `DEFaultPlusCallback` is resolved lazily so the package itself imports
 without the `transformers` extra.
+
+### Three-level diagnosis
+
+```python
+from defaultplusplus import FeatureExtractor
+from defaultplusplus.diagnosis import load_pretrained
+
+with FeatureExtractor(model, arch="encoder") as fx:
+    # ... your training loop calls fx.step(...) and fx.epoch_end(...) ...
+    features = fx.finalize()
+
+predictor = load_pretrained("encoder")            # raises if no weights
+diagnosis = predictor.predict(features)
+print(diagnosis.to_dict())
+# {
+#   'is_faulty':       True,
+#   'detection_prob':  0.92,
+#   'category':        'qkv',
+#   'category_prob':   0.81,
+#   'root_cause':      'zero_query',
+#   'root_cause_prob': 0.74,
+#   'group_importance': {'qkv_alignment': 3.2, 'attention': 1.7, ...},
+# }
+```
+
+The `Predictor` validates the live `feature_names` schema against the
+one bundled in the checkpoint, so a model trained against schema X
+refuses to score features built against schema Y. Pretrained weights
+are not shipped in the wheel — train your own with
+`scripts/train_diagnoser.py` (`--csv` for real benchmark data,
+`--synthetic` for development smoke).
 
 ### `FeatureExtractor` lifecycle
 
@@ -197,7 +234,7 @@ defaultplusplus/
       runner.py                paired runs + crash isolation
       task_metrics.py          per-task kill-test metric registry
       dataset_writer.py
-    diagnosis/                 reserved for runtime diagnostic model
+    diagnosis/                 runtime Predictor + load_pretrained()
     pretrained/                reserved for shipped checkpoints
     processing/                reserved for runtime feature processor
     ui/                        reserved for runtime UI helpers

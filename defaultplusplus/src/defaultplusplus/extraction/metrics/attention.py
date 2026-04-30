@@ -46,8 +46,6 @@ class AttentionMetrics(MetricModule):
         "positional_recv_late",
         "positional_recv_mid_over_early",
         "positional_recv_late_over_early",
-        "attention_score_var",
-        "attention_score_skew",
         "pre_softmax_score_mean",
         "pre_softmax_score_var",
         "pre_softmax_score_skew",
@@ -281,14 +279,12 @@ class AttentionMetrics(MetricModule):
         if attention_mask is not None:
             metrics.update(self._compute_positional_profile(attn, attention_mask))
 
-        # Score statistics proxy
-        score_proxy = log_probs
-        metrics['attention_score_var'] = float(score_proxy.var().item())
-        metrics['attention_score_skew'] = float(_safe_skew(score_proxy.view(-1).cpu().numpy()))
-
         # Pre-softmax stats: prefer captured Q/K from sublayer hooks
         # (exact); fall back to recomputing the projections on the
-        # layer input (approximate).
+        # layer input (approximate). The legacy log-prob-proxy
+        # ``attention_score_var`` / ``attention_score_skew`` keys were
+        # removed in v0.3.0; consumers should read the exact
+        # ``pre_softmax_score_*`` family instead.
         cap = getattr(self, "_sublayer_capture", None)
         pre_stats = self._compute_pre_softmax_stats_from_capture(
             cap, layer_idx, attention_mask

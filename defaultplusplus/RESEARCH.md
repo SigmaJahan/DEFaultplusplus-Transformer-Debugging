@@ -691,7 +691,7 @@ the repository directly:
   author = {Jahan, Sigma},
   year   = {2026},
   url    = {https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging},
-  version = {0.2.0},
+  version = {0.3.0},
   note   = {Software repository; manuscript in preparation.}
 }
 ```

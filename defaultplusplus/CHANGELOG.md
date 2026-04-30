@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `defaultplusplus.diagnosis` runtime API: `load_pretrained(arch)` →
+  `Predictor.predict(features)` → `Diagnosis(is_faulty, category,
+  root_cause, group_importance, ...)`. The schema the model was
+  trained against is bundled inside the checkpoint and validated
+  against the live `FeatureExtractor.feature_names` at load time, so
+  a model trained on one schema cannot silently consume features
+  from another. `PretrainedWeightsMissingError` raised with a clear
+  message when no `.pt` is on disk.
+- `scripts/train_diagnoser.py` training driver. Reads the paper-aligned
+  benchmark CSV (`--csv`) or synthesizes labels from random data
+  (`--synthetic`, for development), trains a
+  `HierarchicalDiagnosisModel`, and writes a v1 checkpoint via
+  `defaultplusplus.diagnosis.save_checkpoint`.
+- Checkpoint format v1 bundles: `feature_names`, `category_names`,
+  `category_sizes`, `rootcause_names`, `group_names`, `model_state_dict`,
+  scaler `mean` / `scale`, per-category prototype tensors, and the
+  `model_kwargs` needed to reconstruct the model class. Format
+  version is checked at load time; future bumps just add an `if`.
 - DEForm mutation engine: 45 mutation operators across 12 transformer
   components, static + dynamic injection context managers, structural
   verifier, and exact one-sided sign-flip permutation test.
@@ -77,6 +95,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   predicted vs. nearest-alternative prototype margin.
 - Default training hyperparameters: 150 epochs, three message-passing
   rounds, early-stopping patience of 20, gamma of 0.3.
+
+### Removed
+- Legacy `L{layer_idx}_attention_score_var` / `..._score_skew` keys
+  (log-prob proxy on attention probabilities). The exact
+  `pre_softmax_score_*` family (computed from captured Q/K via the
+  sublayer hooks) is the single score-shape signal. **MAJOR bump.**
 
 ### Fixed
 - `_compute_pre_softmax_stats` now reads captured Q/K from the

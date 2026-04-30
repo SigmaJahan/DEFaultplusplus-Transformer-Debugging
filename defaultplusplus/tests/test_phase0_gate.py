@@ -24,10 +24,10 @@ def test_all_init_files_exist_and_importable():
 
 
 def test_version():
-    """T0.2 — __version__ returns '0.2.0'."""
+    """T0.2 — __version__ returns the current package version."""
     from src.defaultplusplus import __version__
 
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.3.0"
 
 
 def test_directory_structure():
