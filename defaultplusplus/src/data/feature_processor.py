@@ -46,7 +46,11 @@ CV_THRESHOLD        = 0.01   # Step 5: drop if CV (std/|mean|) < this
 CV_TINY_MEAN        = 1e-9   # Step 5: fallback to abs std if |mean| < this
 CV_FALLBACK_STD     = 1e-6   # Step 5: fallback threshold when mean ≈ 0
 
-LAYER_RE = re.compile(r"^(.*?)_l(\d+)_(.*)$")   # matches ffn_delta_l3_mean_final
+# Match both short layer prefixes (foo_l3_bar) and long ones (foo_layer3_bar).
+# The latter is what the offline raw collector emits (e.g.
+# ``grad_norm_layer3_attention_*``); the former is the in-process extractor's
+# convention.
+LAYER_RE = re.compile(r"^(.*?)_l(?:ayer)?(\d+)_(.*)$")
 
 
 # Step 6 delegates to feature_groups.assign_feature_to_group, which encodes
@@ -179,12 +183,15 @@ class FeatureProcessor:
                 df[col] = np.sign(v) * np.log1p(np.abs(v))
         return df
 
-    # ── Step 3: Layer aggregation (encoder only) ──────────────────────────────
+    # ── Step 3: Layer aggregation ─────────────────────────────────────────────
+    # Data-driven, not arch-gated: aggregation runs whenever the input
+    # carries per-layer column families (``..._l{N}_...`` or
+    # ``..._layer{N}_...``). The original encoder-only gate assumed
+    # decoder traces arrived pre-aggregated by the in-process extractor;
+    # offline raw CSVs from either arch may include per-layer columns,
+    # so we let the data decide.
 
     def _step3_fit(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.arch != "encoder":
-            self._layer_families = {}
-            return df
         families: dict[str, list] = {}
         for col in df.columns:
             m = LAYER_RE.match(col.lower())
@@ -195,7 +202,7 @@ class FeatureProcessor:
         return self._apply_layer_agg(df)
 
     def _step3_transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.arch != "encoder" or not self._layer_families:
+        if not self._layer_families:
             return df
         return self._apply_layer_agg(df)
 

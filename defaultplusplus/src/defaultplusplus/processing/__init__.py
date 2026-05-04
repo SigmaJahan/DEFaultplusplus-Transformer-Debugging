@@ -1,6 +1,23 @@
-"""Reserved namespace for runtime feature processing.
+"""Runtime feature processing.
 
-This subpackage will hold the runtime-side feature processor that
-mirrors ``src.data.feature_processor`` once the runtime roadmap moves
-it here. It is intentionally empty in the current release.
+Public entry points:
+
+    RuntimeNormalizer       loads a clean reference and converts a live
+                            ``FeatureExtractor.finalize()`` dict into
+                            the diagnostic model's input shape.
+    RuntimeReference        the underlying ``(schema, median, mad, std)``
+                            summary; serialize to ``.npz``.
+    fit_reference           build a :class:`RuntimeReference` from a
+                            baseline-only feature matrix.
 """
+from .normalizer import (
+    RuntimeNormalizer,
+    RuntimeReference,
+    fit_reference,
+)
+
+__all__ = [
+    "RuntimeNormalizer",
+    "RuntimeReference",
+    "fit_reference",
+]

@@ -202,8 +202,16 @@ class Predictor:
         model: Any,
         prototypes: Mapping[str, Any] | None = None,
         strict_schema: bool = True,
+        feature_processor: Any | None = None,
+        processed_feature_names: Sequence[str] | None = None,
     ) -> None:
         self.arch = arch
+        # ``feature_names`` is the user-facing schema contract — the keys
+        # the caller's ``FeatureExtractor.finalize()`` is expected to
+        # emit. For checkpoints trained with the FeatureProcessor pipeline
+        # this is the **raw** column list; for legacy v1 checkpoints
+        # without a processor it falls back to the same list the model
+        # consumes directly.
         self.feature_names = list(feature_names)
         self._feature_index = {name: i for i, name in enumerate(self.feature_names)}
         self.category_names = list(category_names)
@@ -218,6 +226,18 @@ class Predictor:
         )
         self.model = model
         self.strict_schema = strict_schema
+        # FeatureProcessor (optional) replays the trainer's preprocessing
+        # at predict time. When present, ``self.feature_names`` is the
+        # raw schema and the processor turns user input into the
+        # post-processed vector that ``scaler_mean`` / ``scaler_scale``
+        # and the model expect. When absent, scaler stats apply directly
+        # to the user-provided vector (legacy path).
+        self._processor = feature_processor
+        self._processed_feature_names = (
+            list(processed_feature_names)
+            if processed_feature_names is not None
+            else list(feature_names)
+        )
         # Restore prototype tensors onto the model so ``diagnose_proto``
         # works post-load.
         if prototypes:
@@ -243,9 +263,24 @@ class Predictor:
         model = _build_model_from_kwargs(payload["model_kwargs"])
         model.load_state_dict(payload["model_state_dict"])
 
+        # The trainer persists a fitted FeatureProcessor and the
+        # pre-processing column schema under ``extra``. When present,
+        # the user-facing schema is the raw column list so callers can
+        # pass straight from ``FeatureExtractor.finalize()``; when
+        # absent (legacy v1 checkpoints), we fall back to the
+        # already-processed column list at the top level.
+        extra = payload.get("extra") or {}
+        processor = extra.get("feature_processor")
+        raw_feature_names = extra.get("raw_feature_names")
+        processed_feature_names = payload["feature_names"]
+        user_facing_names = (
+            raw_feature_names if raw_feature_names is not None
+            else processed_feature_names
+        )
+
         return cls(
             arch=arch,
-            feature_names=payload["feature_names"],
+            feature_names=user_facing_names,
             category_names=payload["category_names"],
             category_sizes=payload["category_sizes"],
             rootcause_names=payload["rootcause_names"],
@@ -255,6 +290,8 @@ class Predictor:
             model=model,
             prototypes=payload.get("prototypes") or {},
             strict_schema=strict_schema,
+            feature_processor=processor,
+            processed_feature_names=processed_feature_names,
         )
 
     # ── Inference ───────────────────────────────────────────────────
@@ -306,7 +343,15 @@ class Predictor:
 
     # ── Internals ───────────────────────────────────────────────────
     def _vectorize(self, features: Mapping[str, float]) -> np.ndarray:
-        """Build a ``(input_dim,)`` vector in the schema's column order."""
+        """Build a ``(input_dim,)`` vector in the model's column order.
+
+        When a FeatureProcessor is bundled with the checkpoint, the
+        user passes raw extractor names; we vectorize against the raw
+        schema, run ``processor.transform``, then apply scaler stats.
+        Without a processor (legacy v1 checkpoints), the user-provided
+        names are already the model's expected column order and we
+        scale directly.
+        """
         if self.strict_schema:
             unexpected = set(features.keys()) - set(self.feature_names)
             if unexpected:
@@ -326,9 +371,18 @@ class Predictor:
                 x[i] = float(v)
             except (TypeError, ValueError):
                 x[i] = 0.0
-        # Replace NaN/Inf to keep the model healthy.
+        # Replace NaN/Inf so neither the processor nor the model gets
+        # poisoned by a stray sentinel from extraction.
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
-        # StandardScaler-style normalize.
+
+        if self._processor is not None:
+            # transform() expects a 2D array (n_samples, n_features)
+            X2 = x.reshape(1, -1).astype(np.float32)
+            X_proc, _names_out, _ = self._processor.transform(
+                X2, list(self.feature_names),
+            )
+            x = X_proc[0].astype(np.float64)
+
         return ((x - self.scaler_mean) / self.scaler_scale).astype(np.float32)
 
     def _predict_single(self, x: np.ndarray) -> Diagnosis:

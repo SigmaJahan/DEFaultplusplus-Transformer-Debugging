@@ -66,29 +66,43 @@ SUBSYSTEM_GROUPS = STRUCTURAL_GROUPS + NON_STRUCTURAL_GROUPS
 # behavior of its own parameters.
 _COMPONENT_MAP = {
     "attn": "attention",
+    "attention": "attention",
     "ffn": "ffn_output",
     "layernorm": "layernorm",
     "qkv": "qkv_alignment",
     "emb": "embedding",
+    "embedding": "embedding",
 }
 
+# Match both short layer prefixes (l3_) and long ones (layer3_), and both
+# short component names (attn) and long ones (attention/embedding).
 _COMPONENT_RE = re.compile(
-    r"(?:grad_norm_(?:agg_)?(?:l\d+_)?|update_ratio_(?:agg_)?(?:l\d+_)?|update_active_(?:agg_)?(?:l\d+_)?)"
-    r"(attn|ffn|layernorm|qkv|emb)"
+    r"(?:grad_norm_(?:agg_)?(?:l(?:ayer)?\d+_)?"
+    r"|update_ratio_(?:agg_)?(?:l(?:ayer)?\d+_)?"
+    r"|update_active_(?:agg_)?(?:l(?:ayer)?\d+_)?)"
+    r"(attn|attention|ffn|layernorm|qkv|emb|embedding)"
 )
 
 # Token-based rules for mapping feature column names to feature groups.
 # Order matters: first match wins. Uses substring matching on cleaned names.
+# Each rule list contains both the short form (e.g. attn_entropy) emitted
+# by the in-process extractor and the long form (e.g. attention_entropy)
+# emitted by the offline raw collector.
 _TOKEN_RULES = [
+    # Pre-softmax attention scores: must come before 'attention' rules so
+    # 'pre_softmax_score', 'attention_score', etc. land in 'score'.
+    (["score_mean", "score_var", "score_max", "score_std", "score_skew",
+      "attn_score", "attention_score", "presoftmax", "pre_softmax_score"], "score"),
     # Attention mechanism: masking, weights, output.
     (["attn_entropy", "attn_pad", "attn_weight", "attn_cross", "attn_mass",
-      "attn_max", "attn_sparsity", "head_similarity", "head_util",
+      "attn_max", "attn_sparsity",
+      "attention_entropy", "attention_pad", "attention_weight",
+      "attention_cross", "attention_mass", "attention_max",
+      "attention_sparsity",
+      "head_similarity", "head_util",
       "mass_leak", "mass_pad", "cross_example"], "attention"),
     # QKV alignment: pairwise cosine similarities of Q, K, V projections.
     (["qk_cos", "qv_cos", "kv_cos", "qkv_"], "qkv_alignment"),
-    # Pre-softmax attention scores.
-    (["score_mean", "score_var", "score_max", "score_std", "score_skew",
-      "attn_score", "presoftmax"], "score"),
     # Positional encoding effects.
     (["pos_discrim", "pos_acc", "positional", "pos_recv", "pos_inv",
       "pos_loss", "pos_margin"], "positional"),
@@ -100,13 +114,15 @@ _TOKEN_RULES = [
     # Residual stream cosine similarity.
     (["res_cos", "res_sim", "residual"], "residual_stream"),
     # Cross-layer representation drift (CKA).
-    (["cka_", "repr_drift", "representation", "repr_l", "h1_delta"], "representation_drift"),
+    (["cka_", "repr_drift", "representation", "repr_l", "h1_delta"],
+     "representation_drift"),
     # Embedding norm and variance.
     (["emb_norm", "emb_var", "embedding"], "embedding"),
     # KV cache diagnostics (decoder only).
     (["cache_", "kv_cache"], "cache"),
     # Output head: prediction confidence, output entropy, margin.
     (["logit_conf", "logit_entropy", "logit_margin", "logit_kl",
+      "logit_nan", "logit_inf",
       "margin_gap", "margin_neg", "margin_pos"], "output"),
     # Validation performance: task accuracy / perplexity / calibration error.
     (["accuracy", "perplexity", "ece", "f1_score",
@@ -116,7 +132,10 @@ _TOKEN_RULES = [
     # belongs here (not validation_perf).
     (["loss", "nll", "step_time", "peak_mem", "kernel_time",
       "grad_norm", "grad_noise", "grad_abs", "grad_zero",
-      "update_ratio", "update_active", "weight_mean", "weight_std"], "training_dynamics"),
+      "gradient_noise", "gradient_variance", "gradient_vanish",
+      "gradient_explode",
+      "update_ratio", "update_active", "weight_mean", "weight_std"],
+     "training_dynamics"),
 ]
 
 # Structural/metadata columns (not feature groups)

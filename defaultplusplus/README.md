@@ -1,6 +1,7 @@
 # defaultplusplus
 
 [![CI](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml)
+[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20018623.svg)](https://doi.org/10.5281/zenodo.20018623)
 
 Hierarchical fault diagnosis and runtime feature extraction for
 HuggingFace transformers.
