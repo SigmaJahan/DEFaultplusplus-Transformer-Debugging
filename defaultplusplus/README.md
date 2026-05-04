@@ -9,8 +9,8 @@ HuggingFace transformers.
 This document covers the **installable Python package**: API surface,
 examples, and the build / publish workflow. For the research-side
 reproduction, training, and benchmark-construction flow see
-[`RESEARCH.md`](RESEARCH.md). The frozen output schema is in
-[`../docs/SPEC.md`](../docs/SPEC.md).
+[`RESEARCH.md`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/RESEARCH.md). The frozen output schema is in
+[`docs/SPEC.md`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/docs/SPEC.md).
 
 ## Install
 
@@ -140,12 +140,12 @@ literature:
 | `wikitext2`    | decoder  | eval_loss                         | ↓         |
 
 Adding a new task means registering one `TaskMetricSpec` in
-[`benchmark/task_metrics.py`](src/defaultplusplus/benchmark/task_metrics.py);
+[`benchmark/task_metrics.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/src/defaultplusplus/benchmark/task_metrics.py);
 nothing else in the runner / CLI changes.
 
 ### Output keys
 
-All output keys are frozen by [`../docs/SPEC.md`](../docs/SPEC.md).
+All output keys are frozen by [`docs/SPEC.md`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/docs/SPEC.md).
 The vector is a flat `dict[str, float]` covering:
 
 - training dynamics: `train_loss`, `train_learning_rate`, `runtime_step_time`, ...
@@ -159,8 +159,8 @@ The vector is a flat `dict[str, float]` covering:
 
 | File | Path | What it shows |
 |---|---|---|
-| Manual loop | [`examples/extract_during_finetune.py`](examples/extract_during_finetune.py) | DistilBERT + synthetic SST-2 |
-| HF Trainer | [`examples/extract_with_hf_trainer.py`](examples/extract_with_hf_trainer.py) | `compute_loss` override + callback |
+| Manual loop | [`examples/extract_during_finetune.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/examples/extract_during_finetune.py) | DistilBERT + synthetic SST-2 |
+| HF Trainer | [`examples/extract_with_hf_trainer.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/examples/extract_with_hf_trainer.py) | `compute_loss` override + callback |
 
 Run them after installing the `[hf]` extra:
 
@@ -260,9 +260,9 @@ and uploading uses `build` + `twine`.
 
 ### Bump the version
 
-Update [`src/defaultplusplus/_version.py`](src/defaultplusplus/_version.py)
+Update [`src/defaultplusplus/_version.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/src/defaultplusplus/_version.py)
 following Semantic Versioning (`MAJOR.MINOR.PATCH`). Add an entry at
-the top of [`CHANGELOG.md`](CHANGELOG.md). The version field in
+the top of [`CHANGELOG.md`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/CHANGELOG.md). The version field in
 `pyproject.toml` is dynamic and reads from `_version.py` so the two
 cannot drift apart.
 
@@ -328,9 +328,9 @@ Semantic Versioning 2.0:
 - **PATCH** for backwards-compatible bug fixes.
 
 The current version is read from
-[`src/defaultplusplus/_version.py`](src/defaultplusplus/_version.py)
+[`src/defaultplusplus/_version.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/src/defaultplusplus/_version.py)
 and surfaced as `defaultplusplus.__version__`.
 
 ## License
 
-Apache-2.0. See [`LICENSE`](LICENSE).
+Apache-2.0. See [`LICENSE`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/LICENSE).
