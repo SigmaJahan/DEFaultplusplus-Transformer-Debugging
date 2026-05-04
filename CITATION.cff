@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the code and the dataset."
+title: "DEFault++: Hierarchical fault diagnosis and runtime feature extraction for HuggingFace transformers"
+authors:
+  - family-names: Jahan
+    given-names: Sigma
+type: software
+version: "0.4.1"
+date-released: "2026-05-04"
+license: Apache-2.0
+repository-code: "https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20019817
+    description: Code release v0.4.1 archived on Zenodo.
+  - type: doi
+    value: 10.5281/zenodo.20018623
+    description: DEFault++ benchmark v1 dataset on Zenodo (paper-aligned feature CSVs).
+keywords:
+  - transformer
+  - fault diagnosis
+  - fault detection
+  - deep learning debugging
+  - huggingface
+  - fine-tuning
+  - feature extraction
+  - training monitoring
