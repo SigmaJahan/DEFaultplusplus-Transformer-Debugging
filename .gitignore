@@ -63,7 +63,12 @@ evaluation/
 # subpackage and cause CI checkouts to be missing the data download
 # module.
 /data/
-remaining-tasks.md
+
+# Private planning + paper drafts that should not ship in the public
+# repo. Anchored with a leading ``/`` so they only match the
+# top-level files, not any same-named file deeper in the tree.
+/remaining-tasks.md
+/DEFault++.pdf
 
 
 
