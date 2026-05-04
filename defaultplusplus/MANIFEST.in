@@ -3,6 +3,7 @@ include LICENSE
 include CHANGELOG.md
 include pyproject.toml
 recursive-include src/defaultplusplus *.py *.typed
+recursive-include src/defaultplusplus/pretrained *.pt *.npz
 recursive-exclude tests *
 recursive-exclude examples *
 recursive-exclude scripts *

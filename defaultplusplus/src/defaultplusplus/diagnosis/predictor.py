@@ -460,25 +460,31 @@ class Predictor:
 
 # ─────────────────────────────────────────────────────────────────────────
 # Model builder — lives outside the class so the import path stays
-# isolated. The training-side ``HierarchicalDiagnosisModel`` is reachable
-# from this layout because ``hierarchical_graph_category_rootcause`` sits
-# at the package root in the source tree.
+# isolated. The canonical home for ``HierarchicalDiagnosisModel`` is
+# ``defaultplusplus.diagnosis.model``; the research-side path
+# ``hierarchical_graph_category_rootcause.model`` is now a re-export
+# shim, but the fallback is kept so legacy checkpoints (and source
+# checkouts that haven't pulled the new layout) still work.
 # ─────────────────────────────────────────────────────────────────────────
 def _build_model_from_kwargs(model_kwargs: Mapping[str, Any]):
     """Instantiate a ``HierarchicalDiagnosisModel`` from saved kwargs."""
     try:
-        # The research-side training driver lives outside the wheel;
-        # we import it lazily so the package itself doesn't blow up if
-        # the research side hasn't been pip-installed.
-        from hierarchical_graph_category_rootcause.model import (
+        from defaultplusplus.diagnosis.model import (
             HierarchicalDiagnosisModel,
         )
-    except ImportError as exc:  # pragma: no cover - install issue
-        raise ImportError(
-            "defaultplusplus.diagnosis requires the "
-            "``hierarchical_graph_category_rootcause`` module to be on "
-            "PYTHONPATH. From a source checkout this is the package root; "
-            "install the research stack via 'pip install -e .[all]'."
-        ) from exc
+    except ImportError:
+        try:
+            from hierarchical_graph_category_rootcause.model import (
+                HierarchicalDiagnosisModel,
+            )
+        except ImportError as exc:  # pragma: no cover - install issue
+            raise ImportError(
+                "defaultplusplus.diagnosis cannot import "
+                "HierarchicalDiagnosisModel from either "
+                "``defaultplusplus.diagnosis.model`` (canonical) or "
+                "``hierarchical_graph_category_rootcause.model`` "
+                "(legacy). Reinstall the package or check the source "
+                "tree layout."
+            ) from exc
 
     return HierarchicalDiagnosisModel(**dict(model_kwargs))

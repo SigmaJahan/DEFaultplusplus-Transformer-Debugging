@@ -46,7 +46,7 @@ from defaultplusplus.diagnosis import save_checkpoint  # noqa: E402
 from hierarchical_graph_category_rootcause.model import (  # noqa: E402
     HierarchicalDiagnosisModel,
 )
-from src.data.feature_processor import FeatureProcessor  # noqa: E402
+from defaultplusplus.processing.feature_processor import FeatureProcessor  # noqa: E402
 
 
 # ─────────────────────────────────────────────────────────────────────────

@@ -56,3 +56,7 @@ src/defaultplusplus/pretrained/weights/*.pkl
 evaluation/
 2_Raw-to-Standardized/ 
 data/ 
+remaining-tasks.md
+
+
+

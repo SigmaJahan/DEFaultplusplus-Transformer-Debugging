@@ -127,6 +127,8 @@ include = ["defaultplusplus*"]
 [tool.setuptools.package-data]
 defaultplusplus = [
     "py.typed",
+    "pretrained/weights/*.pt",
+    "pretrained/weights/*.npz",
 ]
 
 # ── Tooling ──────────────────────────────────────────────────────────────
@@ -135,6 +137,10 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+markers = [
+    "wheel: builds the wheel and exercises the public API in a fresh venv (slow; deselected by default; run explicitly with 'pytest -m wheel' before publishing)",
+]
+addopts = "-m 'not wheel'"
 
 [tool.ruff]
 line-length    = 100

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-04
+
 ### Added
 - `defaultplusplus.diagnosis` runtime API: `load_pretrained(arch)` →
   `Predictor.predict(features)` → `Diagnosis(is_faulty, category,
@@ -110,6 +112,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runner no longer aggregates a partial set of seeds when one seed
   crashes: any per-seed exception or non-finite metric discards the
   whole configuration so the n=5 kill-test guarantee is preserved.
+
+### Added (visualization, runtime normalization, distribution)
+- `defaultplusplus.viz` package behind the `[viz]` extra. Nine public
+  entry points: seven figure-returning plot functions
+  (`plot_diagnosis`, `plot_group_importance`, `plot_per_layer_heatmap`,
+  `plot_training_trace`, `plot_attention_pattern`, `plot_qkv_alignment`,
+  `plot_feature_anomaly`) plus two HTML report writers
+  (`save_diagnosis_report`, `save_run_report`). Reports are
+  self-contained: embedded base64 PNGs, no external assets, no JS.
+  `VizDependencyError` raised with the install hint when matplotlib
+  is not installed.
+- `defaultplusplus.processing.RuntimeNormalizer` with a learned clean
+  reference (`RuntimeReference`: per-key median + MAD + std + count
+  over baseline rows). `encode(features, mode='raw'|'anomaly')`
+  produces a feature dict in the diagnoser's exact schema, filling
+  missing keys with the baseline median or zeros respectively.
+  Aliases short-form (`..._l3_...`) and long-form (`..._layer3_...`)
+  layer names; strips the live extractor's `trace__` prefix. Closes
+  SPEC §1.3 single-run anomaly encoding.
+- `scripts/fit_runtime_reference.py` builds a `RuntimeReference` from
+  a merged trainer CSV and serializes it to `.npz` (no pickle).
+- `defaultplusplus.data.download_bench()` and the
+  `defaultpp-bench-download` console script. Idempotent download +
+  SHA256 verification + safe tar extraction + per-file MANIFEST cross
+  check. Cache lives under `$DEFAULTPP_CACHE_DIR` /
+  `$XDG_CACHE_HOME/defaultplusplus/` / platform default.
+  `BENCH_VERSIONS["v1"]` points at Zenodo record
+  [10.5281/zenodo.20018623](https://doi.org/10.5281/zenodo.20018623).
+- `data/stage_release_bundle.py` builds the published tarball
+  (`dist/defaultpp-bench-v1.tar.gz`) with a per-file
+  `MANIFEST.sha256`, a tarball-level SHA256 sidecar, and a README.
+- Pretrained diagnostic-model weights now ship in the wheel:
+  `pretrained/weights/encoder.pt` (val AUROC 0.9932) and
+  `pretrained/weights/decoder.pt` (val AUROC 0.8735, cat acc 0.4909
+  on the composite-metric early-stop run). Companion
+  `encoder_reference.npz` / `decoder_reference.npz` for
+  `RuntimeNormalizer.load(arch)`.
+
+### Changed (training driver, predictor)
+- `train_diagnoser.py` now wires `FeatureProcessor.fit_transform` into
+  the training loop so layer aggregation, NaN-rate drop, log1p, and
+  CV filtering all run on the train fold before the model sees it.
+  The fitted processor is persisted in the checkpoint under
+  `extra={"feature_processor", "raw_feature_names", "group_indices"}`.
+- Trainer adds: stratified train / val split with `--val-split`,
+  inverse-frequency class weights on detection / categorization /
+  per-category root-cause cross-entropy losses, early stopping with
+  `--patience` / `--eval-every` / restoring the best-by-val state
+  before checkpoint write, and an opt-in composite metric
+  `--early-stop-metric auroc+cat` for runs where AUROC and
+  categorization peak at different epochs (decoder benchmark).
+- `Predictor` now applies `FeatureProcessor.transform` at inference
+  when a checkpoint carries one, so the user-facing schema is the
+  raw `FeatureExtractor.finalize()` keys rather than the
+  post-aggregation column names. Legacy v1 checkpoints without
+  extras still load via the direct vectorize → scale path.
+- `feature_groups.py` token rules accept both short-form (`attn_*`)
+  and long-form (`attention_*`) feature names; the component regex
+  accepts both `_l\d+_` and `_layer\d+_` layer prefixes. Component
+  map adds `attention` / `embedding` aliases.
+- `feature_processor.LAYER_RE` accepts both layer-prefix conventions;
+  layer aggregation runs whenever per-layer families are detected
+  rather than gating on `arch == "encoder"` (the original assumption
+  that decoder traces arrived pre-aggregated turned out wrong for
+  offline raw CSVs).
+
+### Added (data preparation pipeline)
+- `data/preprocess_and_merge.py`: end-to-end preprocessing + merge
+  pipeline that takes per-task paper-aligned CSVs and produces
+  trainer-ready `encoder_merged.csv` / `decoder_merged.csv`. Eight
+  steps: concat → schema fixup (`is_faulty`, `layer_idx`) →
+  synthetic-zero padding for upstream-missing groups →
+  faulty-row dedup → high-NaN drop → median impute → log1p →
+  constant drop → CV filter. Self-contained and idempotent.
 
 ## [0.2.0] - 2026-04-29
 
