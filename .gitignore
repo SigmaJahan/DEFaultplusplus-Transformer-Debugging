@@ -46,16 +46,23 @@ results/
 *.fls
 *.synctex.gz
 
-# Pretrained weights (downloaded on first use)
-src/defaultplusplus/pretrained/weights/*.pt
-src/defaultplusplus/pretrained/weights/*.pkl
+# Pretrained weights are tracked under
+# defaultplusplus/src/defaultplusplus/pretrained/weights/ — they ship
+# with the wheel (~5 MB total). The old "weights are downloaded on
+# first use" rules below are intentionally NOT used for the in-tree
+# pretrained checkpoints; they remain only in case some research-side
+# script writes a separate cache to a project root location.
 
 # Temp staging
 .tmp/
-.0_DEFault-Previous-Work/ 
+.0_DEFault-Previous-Work/
 evaluation/
-2_Raw-to-Standardized/ 
-data/ 
+2_Raw-to-Standardized/
+# Top-level only — DO NOT use bare ``data/`` here; that pattern would
+# also match the installable ``defaultplusplus/src/defaultplusplus/data/``
+# subpackage and cause CI checkouts to be missing the data download
+# module.
+/data/
 remaining-tasks.md
 
 

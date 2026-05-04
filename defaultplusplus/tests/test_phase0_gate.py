@@ -84,8 +84,52 @@ def test_pyproject_toml():
     assert "rich" in viz_names, "expected rich in [viz] extra"
 
 
-def test_gitignore_pretrained_weights():
-    """T0.5 — .gitignore contains pretrained weights exclusion."""
-    gitignore = (ROOT / ".gitignore").read_text()
-    assert "src/defaultplusplus/pretrained/weights/*.pt" in gitignore
-    assert "src/defaultplusplus/pretrained/weights/*.pkl" in gitignore
+def test_pretrained_weights_are_tracked():
+    """T0.5 — Pretrained weights ship in the wheel, so they MUST be
+    tracked in git. Earlier versions (pre-0.4.0) ignored ``*.pt`` and
+    ``*.pkl`` under ``pretrained/weights/`` on the assumption they
+    would be downloaded at runtime; the v0.4.0 release inverted that
+    decision and bundles ~5 MB of trained weights directly.
+
+    This test enforces that the inversion stays in place: if someone
+    re-adds the gitignore exclusion, CI will refuse the change because
+    the encoder/decoder ``.pt`` files would silently disappear from
+    the next wheel build.
+    """
+    import subprocess
+    # ``ROOT`` is the ``defaultplusplus/`` package directory, but the
+    # git repo root is one level up. ``git ls-files`` paths are
+    # relative to the repo root, so query and assert against that
+    # form.
+    repo_root = ROOT.parent
+    result = subprocess.run(
+        ["git", "ls-files",
+         "defaultplusplus/src/defaultplusplus/pretrained/weights/"],
+        cwd=repo_root, capture_output=True, text=True, check=True,
+    )
+    tracked = set(result.stdout.strip().splitlines())
+    must_track = {
+        "defaultplusplus/src/defaultplusplus/pretrained/weights/encoder.pt",
+        "defaultplusplus/src/defaultplusplus/pretrained/weights/decoder.pt",
+        "defaultplusplus/src/defaultplusplus/pretrained/weights/encoder_reference.npz",
+        "defaultplusplus/src/defaultplusplus/pretrained/weights/decoder_reference.npz",
+    }
+    missing = must_track - tracked
+    assert not missing, (
+        f"these pretrained-weight files must be tracked in git so they "
+        f"ship in the wheel: {sorted(missing)}"
+    )
+
+    # Negative assertion: the legacy ``*.pt`` gitignore rule must be
+    # gone in BOTH the repo-root and the package-level gitignores. If
+    # it ever returns, the next person to rebuild the wheel will
+    # quietly produce a broken release.
+    for gi_path in (repo_root / ".gitignore", ROOT / ".gitignore"):
+        if not gi_path.exists():
+            continue
+        gi = gi_path.read_text()
+        assert "pretrained/weights/*.pt" not in gi, (
+            f"the legacy 'ignore pretrained weights' rule is back in "
+            f"{gi_path.relative_to(repo_root)}; remove it or future "
+            "wheel builds will ship without trained checkpoints."
+        )

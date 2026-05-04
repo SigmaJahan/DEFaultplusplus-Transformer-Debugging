@@ -1,5 +1,7 @@
 .venv/
 .pytest_cache/
 results/
-src/defaultplusplus/pretrained/weights/*.pt
-src/defaultplusplus/pretrained/weights/*.pkl
+# Pretrained weights ARE tracked (they ship in the wheel). If any
+# research-side script writes ad-hoc .pkl checkpoints, prefer naming
+# them with a clearly-temporary suffix (e.g. ``*.tmp.pkl``) and
+# adding that pattern instead.
