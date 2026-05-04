@@ -27,7 +27,7 @@ def test_version():
     """T0.2 — __version__ returns the current package version."""
     from src.defaultplusplus import __version__
 
-    assert __version__ == "0.4.0"
+    assert __version__ == "0.4.1"
 
 
 def test_directory_structure():

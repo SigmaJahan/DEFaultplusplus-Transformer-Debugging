@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-04
+
+### Changed
+- README updated to reflect the 0.4.0 reality: pretrained weights are
+  now shipped in the wheel under
+  `defaultplusplus/pretrained/weights/`; new sections cover
+  `RuntimeNormalizer`, the `[viz]` extra, and the
+  `defaultpp-bench-download` benchmark fetcher (Zenodo DOI
+  `10.5281/zenodo.20018623`); layout tree refreshed to list the new
+  `data/`, `processing/`, `viz/`, and `diagnosis/model.py` modules.
+  No code changes vs. 0.4.0; this is a documentation-only release so
+  the first PyPI surface (TestPyPI was 0.4.0) describes the package
+  accurately.
+
 ## [0.4.0] - 2026-05-04
 
 ### Added

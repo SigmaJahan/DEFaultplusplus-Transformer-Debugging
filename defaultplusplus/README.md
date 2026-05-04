@@ -61,7 +61,7 @@ with FeatureExtractor(model, arch="encoder") as fx:
     # ... your training loop calls fx.step(...) and fx.epoch_end(...) ...
     features = fx.finalize()
 
-predictor = load_pretrained("encoder")            # raises if no weights
+predictor = load_pretrained("encoder")            # ships in the wheel
 diagnosis = predictor.predict(features)
 print(diagnosis.to_dict())
 # {
@@ -77,10 +77,64 @@ print(diagnosis.to_dict())
 
 The `Predictor` validates the live `feature_names` schema against the
 one bundled in the checkpoint, so a model trained against schema X
-refuses to score features built against schema Y. Pretrained weights
-are not shipped in the wheel — train your own with
-`scripts/train_diagnoser.py` (`--csv` for real benchmark data,
-`--synthetic` for development smoke).
+refuses to score features built against schema Y.
+
+Pretrained weights ship inside the wheel under
+`defaultplusplus/pretrained/weights/{encoder,decoder}.pt`, with
+matching `{encoder,decoder}_reference.npz` runtime references for
+`RuntimeNormalizer`. Train your own from the public benchmark with
+`scripts/train_diagnoser.py` if you want to reproduce or fine-tune.
+
+### Single-run anomaly encoding
+
+The diagnostic model was trained against a paper-aligned feature
+schema. At runtime, `RuntimeNormalizer` turns a live extractor's dict
+into the exact schema the model expects:
+
+```python
+from defaultplusplus.processing import RuntimeNormalizer
+from defaultplusplus.diagnosis import load_pretrained
+
+norm = RuntimeNormalizer.load("encoder")
+predictor = load_pretrained("encoder")
+encoded = norm.encode(features, mode="raw")    # fills missing keys with baseline median
+diagnosis = predictor.predict(encoded)
+```
+
+Pass `mode="anomaly"` for `(value − median) / mad` z-scores instead.
+
+### Visualization
+
+The `[viz]` extra adds a self-contained HTML report writer plus seven
+matplotlib plot functions:
+
+```python
+from defaultplusplus.viz import save_diagnosis_report
+save_diagnosis_report(diagnosis, encoded, "run.html")  # standalone HTML
+```
+
+Individual plots (`plot_diagnosis`, `plot_group_importance`,
+`plot_per_layer_heatmap`, `plot_training_trace`,
+`plot_attention_pattern`, `plot_qkv_alignment`,
+`plot_feature_anomaly`) return `matplotlib.Figure` objects.
+
+### Public benchmark dataset
+
+The training data CSVs (~360 MB) live on Zenodo, not in the wheel.
+Fetch them on demand:
+
+```bash
+defaultpp-bench-download                        # ~/.cache/defaultplusplus/bench/v1
+```
+
+Or programmatically:
+
+```python
+from defaultplusplus.data import download_bench
+path = download_bench(version="v1")             # checksum-verified, idempotent
+```
+
+DOI: [10.5281/zenodo.20018623](https://doi.org/10.5281/zenodo.20018623).
 
 ### `FeatureExtractor` lifecycle
 
@@ -236,16 +290,27 @@ defaultplusplus/
       task_metrics.py          per-task kill-test metric registry
       dataset_writer.py
     diagnosis/                 runtime Predictor + load_pretrained()
-    pretrained/                reserved for shipped checkpoints
-    processing/                reserved for runtime feature processor
-    ui/                        reserved for runtime UI helpers
+      model.py                 HierarchicalDiagnosisModel
+      _group_encoder.py        GroupEncoder + GraphAggregator
+      predictor.py             Predictor, save_checkpoint, load_pretrained
+    processing/                FeatureProcessor + RuntimeNormalizer
+      feature_processor.py     6-step preprocessing pipeline
+      feature_groups.py        feature → group routing
+      normalizer.py            single-run anomaly encoding
+    pretrained/                shipped diagnostic-model checkpoints
+      weights/encoder.pt       trained encoder diagnoser
+      weights/decoder.pt       trained decoder diagnoser
+      weights/*.npz            RuntimeNormalizer baseline references
+    data/                      benchmark download (defaultpp-bench-download)
+    viz/                       matplotlib plots + HTML report writers
+    ui/                        reserved for future CLI helpers
 
   hierarchical_graph_category_rootcause/  research-side training drivers
                                           (see RESEARCH.md)
   configs/base.yaml                       hyperparameter config
   examples/                               runnable demos
   scripts/                                local + Compute Canada scripts
-  tests/                                  pytest suite (134 tests)
+  tests/                                  pytest suite (201 tests)
   pyproject.toml                          PEP 621 metadata + build config
   LICENSE                                 Apache-2.0
   CHANGELOG.md                            version history
