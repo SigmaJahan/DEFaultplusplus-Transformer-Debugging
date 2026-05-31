@@ -329,3 +329,62 @@ def test_unknown_format_version_raises(tmp_path: Path) -> None:
     torch.save({"format_version": "999"}, bad)
     with pytest.raises(ValueError, match="format_version"):
         Predictor.from_checkpoint(bad)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Label-space validation against the official taxonomy
+# ─────────────────────────────────────────────────────────────────────────
+def _import_validate_label_space():
+    """Import the training driver's validate_label_space, or skip."""
+    repo_root = Path(__file__).resolve().parent.parent
+    folder = repo_root / "hierarchical_graph_category_rootcause"
+    sys.path.insert(0, str(folder))
+    try:
+        from train import validate_label_space  # type: ignore
+    except Exception as exc:  # pragma: no cover - env-dependent
+        pytest.skip(f"training driver not importable: {exc}")
+    return validate_label_space
+
+
+def test_label_space_matches_canonical_when_complete() -> None:
+    """A full decoder label space reports no missing or unexpected pairs."""
+    from defaultplusplus.deform import root_cause_label_space
+
+    validate_label_space = _import_validate_label_space()
+
+    # Build a category_to_rootcauses that mirrors the taxonomy.
+    c2rc = {}
+    gi = 0
+    for comp, rcs in root_cause_label_space("decoder").items():
+        c2rc[comp.value] = [(gi + i, rc) for i, rc in enumerate(rcs)]
+        gi += len(rcs)
+
+    report = validate_label_space("decoder", c2rc)
+    assert report["missing"] == []
+    assert report["unexpected"] == []
+    assert report["expected_root_causes"] == 45
+    assert report["discovered_root_causes"] == 45
+
+
+def test_label_space_flags_missing_and_unexpected() -> None:
+    """Dropping a taxonomy pair flags missing; adding a bogus one flags drift."""
+    from defaultplusplus.deform import root_cause_label_space
+
+    validate_label_space = _import_validate_label_space()
+
+    c2rc = {}
+    gi = 0
+    for comp, rcs in root_cause_label_space("encoder").items():
+        c2rc[comp.value] = [(gi + i, rc) for i, rc in enumerate(rcs)]
+        gi += len(rcs)
+
+    # Drop one real root cause and inject one outside the taxonomy.
+    some_cat = next(iter(c2rc))
+    dropped_rc = c2rc[some_cat].pop()[1]
+    c2rc[some_cat].append((999, "not_a_real_root_cause"))
+
+    report = validate_label_space("encoder", c2rc)
+    # Missing/unexpected pairs are stored in normalized (lower, underscore) form.
+    assert (some_cat.lower(), dropped_rc.lower()) in report["missing"]
+    assert any(r == "not_a_real_root_cause" for _, r in report["unexpected"])
+    assert report["discovered_root_causes"] == 39  # 40 in the taxonomy minus the dropped one

@@ -348,7 +348,7 @@ def download_bench(
 
     actual_root = _extract_tarball(tarball, root)
     if actual_root != extract_root:
-        # Tarball top-level dir name differs from convention; just use it.
+        # Tarball top-level directory name differs from convention; use it.
         extract_root = actual_root
     if verify_manifest:
         _verify_manifest(extract_root)

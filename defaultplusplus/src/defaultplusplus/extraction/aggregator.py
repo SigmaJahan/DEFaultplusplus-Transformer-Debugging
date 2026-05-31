@@ -113,9 +113,9 @@ def compute_window_ranges(total_epochs: int) -> Dict[str, Tuple[int, int]]:
 
       * ``total_epochs <= 0`` returns empty ranges so callers degrade
         gracefully on uninitialized state.
-      * ``total_epochs < 3`` collapses thirds onto whatever epochs are
+      * ``total_epochs < 3`` collapses thirds onto the epochs that are
         present (each window still gets at least one epoch when
-        possible) so we don't silently drop a window's column from the
+        possible) so we do not silently drop a window's column from the
         feature dict.
 
     Epochs are 1-indexed because that is the convention

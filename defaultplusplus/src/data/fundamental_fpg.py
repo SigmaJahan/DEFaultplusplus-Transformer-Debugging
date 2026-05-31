@@ -129,8 +129,9 @@ RULES = [
         justification="Position info modifies x before projection: x=E+P"),
 
     PropagationRule("qkv_projection", "score_computation",
-        PropagationType.M1_FORWARD_SEQUENTIAL, rule_id=1,
-        justification="S=QK^T/sqrt(d_k): dS = dQ K^T + Q dK^T (bilinear in Q,K)"),
+        PropagationType.M2_SIMULTANEOUS, rule_id=2,
+        justification="S=QK^T/sqrt(d_k): Q,K from the projection feed score "
+                       "computation while V feeds attention output simultaneously"),
 
     PropagationRule("score_computation", "attention_masking",
         PropagationType.M1_FORWARD_SEQUENTIAL, rule_id=1,
@@ -247,18 +248,39 @@ RULES = [
     # across generation steps; a cache fault at step t affects the
     # current token and all later tokens.
     # ───────────────────────────────────────────────────────────────────────
-    PropagationRule("kv_cache", "score_computation",
+    PropagationRule("kv_cache", "attention_weights",
         PropagationType.M7_CACHE_TIME, rule_id=7, scope="decoder",
-        justification="Cached K used in scores: S[t] = Q[t] K_cache[:t]^T"),
-
-    PropagationRule("kv_cache", "attention_output",
-        PropagationType.M7_CACHE_TIME, rule_id=7, scope="decoder",
-        justification="Cached V used in output: O[t] = A[t] V_cache[:t]"),
+        justification="Cached K,V affect future-step attention: "
+                       "S[t]=Q[t]K_cache[:t]^T and O[t]=A[t]V_cache[:t]"),
 ]
 
 
-def build_fundamental_fpg(arch: str = "encoder") -> tuple[list[str], np.ndarray, dict]:
+# Mechanisms that contribute edges to the message-passing adjacency Â.
+# Backward gradient coupling (M5) enters the model through gradient
+# features and architecture-wide intervention (M6) through fault labels,
+# so neither contributes edges to Â.
+_MESSAGE_PASSING_TYPES = (
+    PropagationType.M1_FORWARD_SEQUENTIAL,
+    PropagationType.M2_SIMULTANEOUS,
+    PropagationType.M3_RESIDUAL_BYPASS,
+    PropagationType.M4_CROSS_LAYER,
+    PropagationType.M7_CACHE_TIME,
+)
+
+
+def build_fundamental_fpg(
+    arch: str = "encoder",
+    prop_types: tuple = None,
+) -> tuple[list[str], np.ndarray, dict]:
     """Build the fundamental FPG for a given architecture.
+
+    Args:
+        arch: ``"encoder"``, ``"decoder"``, or ``"both"``.
+        prop_types: when given, keep only rules whose mechanism is in this
+            set. The group-level adjacency Â uses the forward and
+            structural mechanisms (M1, M2, M3, M4, M7); M5 and M6 are
+            excluded there. When ``None``, all mechanisms are kept (used
+            for the full edge-derivation table and visualization).
 
     Returns:
         component_names: ordered list of component names
@@ -277,6 +299,9 @@ def build_fundamental_fpg(arch: str = "encoder") -> tuple[list[str], np.ndarray,
     else:
         comps = COMPONENTS
         rules = RULES
+
+    if prop_types is not None:
+        rules = [r for r in rules if r.prop_type in prop_types]
 
     names = [c.name for c in comps]
     name_to_idx = {n: i for i, n in enumerate(names)}
@@ -403,14 +428,18 @@ def fundamental_to_feature_group_adjacency(
     Â is consumed by the message-passing layer in the diagnostic model.
     Structural groups receive FPG-derived neighbor edges. Non-structural
     groups (representation_drift, training_dynamics, validation_perf)
-    receive self-loops only.
+    receive self-loops only. Â is built from the forward and structural
+    mechanisms (M1, M2, M3, M4, M7); backward gradient coupling (M5)
+    enters through gradient features and architecture-wide intervention
+    (M6) through fault labels, so neither contributes edges here.
 
     Returns:
         group_names: ordered group names matching the rows/cols of Â
         group_adj:   Â ∈ R^{G×G} with self-loops included
         metadata:    dict with components, rules, and mechanism summary
     """
-    comp_names, comp_adj, metadata = build_fundamental_fpg(arch)
+    comp_names, comp_adj, metadata = build_fundamental_fpg(
+        arch, prop_types=_MESSAGE_PASSING_TYPES)
 
     # Structural groups present in this architecture, in component order.
     present_groups: list[str] = []

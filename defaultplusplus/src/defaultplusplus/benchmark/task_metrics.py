@@ -76,7 +76,14 @@ def _accuracy(m: Mapping[str, float]) -> float:
     return _take(m, "accuracy")
 
 
-def _eval_loss(m: Mapping[str, float]) -> float:
+def _log_perplexity(m: Mapping[str, float]) -> float:
+    """Log-perplexity for a language-modeling eval set.
+
+    On a fixed eval set the HF Trainer's mean cross-entropy ``eval_loss``
+    equals the mean per-token negative log-likelihood, which is exactly
+    log-perplexity (``log(perplexity) = mean NLL``). The decoder kill
+    test therefore uses ``eval_loss`` directly as log-perplexity.
+    """
     return _take(m, "loss")
 
 
@@ -130,14 +137,26 @@ TASK_METRICS: dict[str, TaskMetricSpec] = {
         raw_metrics=("matthews_correlation",), aggregator=_matthews_correlation,
     ),
 
-    # ── Decoder / language modeling ─────────────────────────────────────
+    # ── Decoder / language modeling (log-perplexity = mean eval_loss) ────
+    "lambada": TaskMetricSpec(
+        name="lambada", arch="decoder", higher_is_better=False,
+        raw_metrics=("loss",), aggregator=_log_perplexity,
+    ),
+    "ptb": TaskMetricSpec(
+        name="ptb", arch="decoder", higher_is_better=False,
+        raw_metrics=("loss",), aggregator=_log_perplexity,
+    ),
     "wikitext2": TaskMetricSpec(
         name="wikitext2", arch="decoder", higher_is_better=False,
-        raw_metrics=("loss",), aggregator=_eval_loss,
+        raw_metrics=("loss",), aggregator=_log_perplexity,
     ),
     "wikitext": TaskMetricSpec(  # alias people commonly type
         name="wikitext", arch="decoder", higher_is_better=False,
-        raw_metrics=("loss",), aggregator=_eval_loss,
+        raw_metrics=("loss",), aggregator=_log_perplexity,
+    ),
+    "openwebtext": TaskMetricSpec(
+        name="openwebtext", arch="decoder", higher_is_better=False,
+        raw_metrics=("loss",), aggregator=_log_perplexity,
     ),
 }
 

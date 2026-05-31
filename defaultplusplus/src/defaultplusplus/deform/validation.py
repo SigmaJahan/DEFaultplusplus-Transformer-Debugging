@@ -17,7 +17,7 @@ DEForm validates each generated mutant in two stages:
      one-sided sign-flip permutation test to the per-seed deltas. Five
      matched seeds is the smallest n that admits an exact one-sided
      test at alpha = 0.05, with a minimum p-value of 1 / 2^5 ≈ 0.031.
-     A mutant is killed when ``p_value <= alpha``.
+     A mutant is killed when ``p_value < alpha``.
 
 These tests are independent: the verifier is a sanity check on the
 injector itself; the kill test asks whether the resulting behavioral
@@ -259,7 +259,7 @@ def is_killed(clean: Sequence[float],
 
     Returns:
         Tuple ``(killed, p_value)``. ``killed`` is True if and only if
-        ``p_value <= alpha``.
+        ``p_value < alpha``.
     """
     p = sign_flip_permutation_test(clean, faulty, higher_is_better=higher_is_better)
-    return (p <= alpha, p)
+    return (p < alpha, p)

@@ -41,7 +41,7 @@ def test_fit_reference_basic_stats() -> None:
     assert ref.median.shape == (4,)
     # Median of N(2,1) draws is close to 2.
     assert np.allclose(ref.median, 2.0, atol=0.2)
-    # MAD-as-sigma should also be near 1 for N(0,1)-ish data.
+    # MAD-as-sigma should also be near 1 for approximately N(0,1) data.
     assert np.allclose(ref.mad, 1.0, atol=0.3)
     assert ref.n_baseline == 200
     assert ref.arch == "encoder"

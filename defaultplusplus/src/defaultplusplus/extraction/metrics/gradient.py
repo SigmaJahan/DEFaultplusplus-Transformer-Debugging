@@ -15,6 +15,9 @@ from ...config import ExtractionConfig
 class GradientMetrics(MetricModule):
     """Gradient norms, update ratios, vanishing/exploding detection."""
 
+    # Six global gradient statistics. Update ratios are reported per
+    # component (the update_ratio_{group} keys) rather than as a global
+    # total, which keeps the global set at six.
     _FIXED_KEYS = (
         "grad_norm_total",
         "grad_abs_min",
@@ -22,7 +25,6 @@ class GradientMetrics(MetricModule):
         "grad_zero_ratio",
         "gradient_vanish",
         "gradient_explode",
-        "update_ratio_total",
     )
 
     def __init__(self, inspector: ModelInspector, config: Optional[ExtractionConfig] = None):
@@ -105,7 +107,6 @@ class GradientMetrics(MetricModule):
     def _compute_update_ratios(self, model: torch.nn.Module) -> Dict[str, float]:
         layer_groups = self.inspector.get_parameter_groups()
         default = {f'update_ratio_{g}': 0.0 for g in layer_groups}
-        default['update_ratio_total'] = 0.0
 
         if not self._previous_params:
             self._initialize_previous_params(model)
@@ -113,8 +114,6 @@ class GradientMetrics(MetricModule):
 
         group_delta_sq = {g: 0.0 for g in layer_groups}
         group_weight_sq = {g: 0.0 for g in layer_groups}
-        total_delta_sq = 0.0
-        total_weight_sq = 0.0
 
         for name, param in model.named_parameters():
             if not param.requires_grad:
@@ -128,8 +127,6 @@ class GradientMetrics(MetricModule):
             delta = current - previous
             delta_norm_sq = float(torch.sum(delta * delta).item())
             weight_norm_sq = float(torch.sum(previous * previous).item())
-            total_delta_sq += delta_norm_sq
-            total_weight_sq += weight_norm_sq
 
             for group, patterns in layer_groups.items():
                 if any(pattern in name for pattern in patterns):
@@ -144,8 +141,6 @@ class GradientMetrics(MetricModule):
             denom = math.sqrt(group_weight_sq[group]) + eps
             metrics[f'update_ratio_{group}'] = math.sqrt(group_delta_sq[group]) / denom if denom > eps else 0.0
 
-        denom_total = math.sqrt(total_weight_sq) + eps
-        metrics['update_ratio_total'] = math.sqrt(total_delta_sq) / denom_total if denom_total > eps else 0.0
         return metrics
 
     def _initialize_previous_params(self, model: torch.nn.Module):

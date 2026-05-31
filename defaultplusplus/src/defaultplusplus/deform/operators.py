@@ -120,6 +120,11 @@ _ATTN_OPS: list[Operator] = [
     Operator("QFG", OperatorComponent.QKV, "dynamic_parameter_registration",
              "Freeze QKV gradients while preserving the forward path.",
              OperatorSearchType.BINARY),
+    Operator("QHD", OperatorComponent.QKV, "dimension",
+             "Repartition the head dimensions into an alternative "
+             "(heads, d_head) factorization with heads * d_head = d_model.",
+             OperatorSearchType.CATEGORICAL,
+             param_name="split", param_grid=("half_heads", "double_heads", "single_head")),
 
     # Score
     Operator("SDS", OperatorComponent.SCORE, "normalization",
@@ -158,6 +163,16 @@ _ATTN_OPS: list[Operator] = [
              "Trigger a valid fallback path via dtype or layout mismatch.",
              OperatorSearchType.CATEGORICAL,
              param_name="trigger", param_grid=("dtype", "layout")),
+    Operator("KRP", OperatorComponent.KERNEL, "numerical_precision",
+             "Reduced-precision accumulation mode for the attention kernel; "
+             "configurations producing non-finite traces are discarded.",
+             OperatorSearchType.CATEGORICAL,
+             param_name="precision", param_grid=("fp16", "bf16", "tf32")),
+    Operator("KMC", OperatorComponent.KERNEL, "kernel_memory",
+             "Force the attention kernel onto a reduced-memory chunked "
+             "execution path; configurations producing non-finite traces "
+             "are discarded.",
+             OperatorSearchType.BINARY),
 
     # Variant
     Operator("VSH", OperatorComponent.VARIANT, "variant_configuration",
@@ -173,6 +188,12 @@ _ATTN_OPS: list[Operator] = [
              "Stale cache: serve previous-step K, V instead of current.",
              OperatorSearchType.CATEGORICAL,
              param_name="layers", param_grid=("first", "middle", "last", "all"),
+             scope="decoder"),
+    Operator("CDU", OperatorComponent.KV_CACHE, "update_synchronization",
+             "Desynchronized cache update: withhold the current step's freshly "
+             "computed K, V from the cache so attention and prediction read "
+             "desynchronized cached states.",
+             OperatorSearchType.BINARY,
              scope="decoder"),
     Operator("COB", OperatorComponent.KV_CACHE, "cache_position",
              "Off-by-one indexing into the cache.",
@@ -208,6 +229,11 @@ _ARCH_OPS: list[Operator] = [
              "Scale segment / type embeddings by a multiplicative factor.",
              OperatorSearchType.NUMERIC_GRID,
              param_name="factor", param_grid=(0.5, 2.0, 5.0)),
+    Operator("EZD", OperatorComponent.EMBEDDING, "input_dimension",
+             "Zero a contiguous block of embedding feature dimensions while "
+             "preserving the embedding tensor shape.",
+             OperatorSearchType.NUMERIC_GRID,
+             param_name="fraction", param_grid=(0.1, 0.3, 0.5)),
 
     # FFN
     Operator("FSW", OperatorComponent.FFN, "weight_scaling",
@@ -248,6 +274,11 @@ _ARCH_OPS: list[Operator] = [
              "Replace the LayerNorm epsilon stability term.",
              OperatorSearchType.NUMERIC_GRID,
              param_name="value", param_grid=(1e-4, 1e-2, 1e0)),
+    Operator("NWD", OperatorComponent.LAYERNORM, "regularization",
+             "Apply weight decay to the LayerNorm gamma, beta parameters, "
+             "which are normally excluded from decay.",
+             OperatorSearchType.NUMERIC_GRID,
+             param_name="coefficient", param_grid=(1e-2, 1e-1, 1.0)),
 
     # Residual
     Operator("RRS", OperatorComponent.RESIDUAL, "skip_connection",
@@ -266,6 +297,10 @@ _ARCH_OPS: list[Operator] = [
              "Replace the global max-norm gradient clip threshold.",
              OperatorSearchType.NUMERIC_GRID,
              param_name="value", param_grid=(0.1, 1.0, 10.0)),
+    Operator("RDR", OperatorComponent.RESIDUAL, "dropout_rate",
+             "Change the residual-branch dropout probability.",
+             OperatorSearchType.NUMERIC_GRID,
+             param_name="p", param_grid=(0.1, 0.3, 0.5)),
 
     # Output
     Operator("OSL", OperatorComponent.OUTPUT, "output_scaling",
@@ -309,3 +344,40 @@ def operators_for_component(component: OperatorComponent,
                             scope: str | None = None) -> list[Operator]:
     """Return operators that target the given component (optionally scoped)."""
     return [op for op in list_operators(scope=scope) if op.component == component]
+
+
+# Categories that exist only in decoder architectures. KV Cache is the
+# single decoder-only fault category; every other category applies to
+# both encoders and decoders. Individual operators may still be scoped
+# (e.g. MCB realizes the masking "dynamic mask" root cause on decoders
+# and VEC realizes the variant "dynamic dispatch" root cause on
+# encoders), but the root cause itself belongs to its category's label
+# space in both architectures.
+DECODER_ONLY_COMPONENTS = frozenset({OperatorComponent.KV_CACHE})
+
+
+def root_cause_label_space(arch: str | None = None) -> dict[OperatorComponent, list[str]]:
+    """Return the Level-3 root-cause label space per fault category.
+
+    The label space is category-based, not operator-scope-based. A
+    category present in ``arch`` contributes all of its distinct root
+    causes, even when a particular root cause is realized by a
+    scope-specific operator. KV Cache is the only decoder-only category.
+
+    Args:
+        arch: ``"encoder"`` excludes decoder-only categories;
+              ``"decoder"`` (or ``None``) includes every category.
+
+    Returns:
+        Mapping from each included :class:`OperatorComponent` to the
+        sorted list of its root-cause names. Encoders yield 40 root
+        causes across 11 categories; decoders yield 45 across 12.
+    """
+    space: dict[OperatorComponent, list[str]] = {}
+    for op in OPERATORS.values():
+        if arch == "encoder" and op.component in DECODER_ONLY_COMPONENTS:
+            continue
+        space.setdefault(op.component, [])
+        if op.root_cause not in space[op.component]:
+            space[op.component].append(op.root_cause)
+    return {comp: sorted(rcs) for comp, rcs in space.items()}

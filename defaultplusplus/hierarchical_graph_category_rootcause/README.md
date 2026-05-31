@@ -36,15 +36,20 @@ L_total = L_detect + alpha * L_category + lambda * L_rootcause + beta * L_contra
 
 ## Training Protocol
 
-1. **Outer loop**: 5-fold GroupKFold (grouped by model+dataset+seed)
-2. **Inner split**: 80/20 stratified train/val within each fold
+Nested grouped cross-validation. Both loops group by the model--task pair,
+so every held-out fold contains only model--task pairs unseen during
+training and inner model selection. This trains 25 models per architecture
+(5 outer x 5 inner).
+
+1. **Outer loop**: 5-fold GroupKFold (grouped by the model--task pair)
+2. **Inner loop**: 5-fold StratifiedGroupKFold (grouped by the model--task pair) for model selection
 3. **Oversampling**: clean class upsampled to 50% of faulty count (training only)
 4. **Early stopping**: on a hierarchy-aware validation metric that includes Stage 3 prototype F1
 5. **After training**: compute root-cause prototypes from training embeddings
 
 ## Evaluation Protocol
 
-**Stage 1**: AUROC + macro-F1 on full test set.
+**Stage 1**: AUROC + binary F1 on full test set (faulty vs correct are balanced by construction).
 
 **Stage 2**: Macro-F1 on faulty test samples only.
 

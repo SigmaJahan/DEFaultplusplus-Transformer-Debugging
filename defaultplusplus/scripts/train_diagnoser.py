@@ -464,8 +464,8 @@ def train(
         X_val_t = y_det_val_t = y_cat_val_t = y_rc_val_t = None
 
     # Inverse-frequency class weights for cross-entropy. Replaces the
-    # earlier baseline-oversampling band-aid: instead of inflating row
-    # counts we upweight the loss contribution of rare classes.
+    # earlier baseline oversampling: instead of inflating row counts we
+    # upweight the loss contribution of rare classes.
     detect_weight = _inverse_freq_weights(y_det_t, num_classes=2)
     cat_weight = _inverse_freq_weights(
         y_cat_t[y_det_t == 1], num_classes=max(1, len(category_names)),

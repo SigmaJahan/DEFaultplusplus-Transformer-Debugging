@@ -281,7 +281,7 @@ def plot_training_trace(features: Mapping[str, float],
 def plot_attention_pattern(features: Mapping[str, float], layer: int):
     """One layer's attention shape (entropy, sparsity, future-mass, head similarity).
 
-    Falls back to whatever attention-family features are present.
+    Falls back to the attention-family features that are present.
     """
     plt = require_matplotlib()
     fig, ax = plt.subplots(figsize=(7, 3.2))

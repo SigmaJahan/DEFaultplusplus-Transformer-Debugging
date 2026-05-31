@@ -583,8 +583,8 @@ def _synthetic_encoder_dataset(tokenizer: Any,
         enc = tokenizer([r[0] for r in rows], padding="max_length",
                         truncation=True, max_length=64, return_tensors="pt")
         if regression:
-            # Map binary labels to bounded float scores [0.0, 5.0]-ish
-            # so HF's regression head has something to fit.
+            # Map binary labels to bounded float scores in [1.0, 5.0]
+            # so the regression head has a continuous target to fit.
             enc["labels"] = torch.tensor(
                 [float(r[1]) * 4.0 + 1.0 for r in rows], dtype=torch.float32,
             )

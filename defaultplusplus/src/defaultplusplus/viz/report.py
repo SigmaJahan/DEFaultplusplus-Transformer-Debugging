@@ -144,7 +144,7 @@ def save_diagnosis_report(diagnosis,
                                alt="qkv alignment per layer")
                     + "</section>")
 
-    # Per-layer heatmaps for whatever families this run carries
+    # Per-layer heatmaps for the metric families this run carries
     metrics = _gather_per_layer_metrics(features)
     if metrics:
         sections.append("<section><h2>Per-layer heatmaps</h2>")

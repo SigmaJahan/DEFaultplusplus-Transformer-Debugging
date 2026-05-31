@@ -1,4 +1,4 @@
-"""Factory and implementations for the 45 DEForm operators.
+"""Factory and implementations for the 52 DEForm operators.
 
 The implementations are intentionally architecture-tolerant: they target
 standard HuggingFace naming conventions first and fail explicitly when a
@@ -20,12 +20,12 @@ from ..operators import OPERATORS
 _MASK_OPS = {"MZM", "MIM", "MRM", "MCB"}
 _SCORE_OPS = {"SDS", "SPD", "SUC"}
 _POSITIONAL_OPS = {"POE", "PSI", "PTL"}
-_KERNEL_OPS = {"KSB", "KMD", "KFT"}
+_KERNEL_OPS = {"KSB", "KMD", "KFT", "KRP"}
 _VARIANT_OPS = {"VSH", "VEC"}
-_CACHE_OPS = {"CST", "COB", "CTR", "CLK"}
+_CACHE_OPS = {"CST", "CDU", "COB", "CTR", "CLK"}
 _RESIDUAL_OPS = {"RRS", "RSR", "RIN"}
 _OUTPUT_DYNAMIC_OPS = {"OSL", "OOD"}
-_ATTRIBUTE_OPS = {"QFG", "FCA", "FRG", "NCE", "RGC"}
+_ATTRIBUTE_OPS = {"QFG", "QHD", "FCA", "FRG", "NCE", "NWD", "RGC", "RDR", "KMC"}
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,8 @@ _STATIC_SPECS: dict[str, StaticSpec] = {
     "ESW": StaticSpec(("embeddings.word_embeddings", "word_embedding", "tok_embedding",
                        "token_embedding", "wte", "embed_tokens"), "swap_rows"),
     "ESS": StaticSpec(("token_type_embeddings", "segment", "type_embedding"), "scale"),
+    "EZD": StaticSpec(("embeddings.word_embeddings", "word_embedding", "tok_embedding",
+                       "token_embedding", "wte", "embed_tokens"), "zero_cols"),
     "FSW": StaticSpec(("intermediate.dense", "output.dense", "mlp", "ffn", "feed_forward",
                        "fc1", "fc2", "c_fc", "c_proj", "w1", "w2"), "scale"),
     "FDN": StaticSpec(("intermediate.dense", "mlp", "ffn", "feed_forward", "fc1",
@@ -203,6 +205,10 @@ class _NamedParameterFault(StaticFault):
             frac = _fraction(self.param_value)
             for p in params:
                 _zero_rows(p, frac)
+        elif self.mutator == "zero_cols":
+            frac = _fraction(self.param_value)
+            for p in params:
+                _zero_cols(p, frac)
         elif self.mutator == "swap_rows":
             frac = _fraction(self.param_value)
             for p in params:
@@ -389,14 +395,14 @@ class _ForwardFault(DynamicFault):
             elif self.operator_id == "KMD" and "dropout" in lkey:
                 out_kwargs[key] = float(self.param_value if self.param_value is not None else 0.1)
 
-        if self.operator_id in {"CST", "COB", "CTR", "CLK"}:
+        if self.operator_id in {"CST", "CDU", "COB", "CTR", "CLK"}:
             out_kwargs = self._mutate_cache_inputs(out_kwargs)
         return args, out_kwargs
 
     def _mutate_cache_inputs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
-        """Apply CST/COB/CTR/CLK to the model-forward kwargs.
+        """Apply CST/CDU/COB/CTR/CLK to the model-forward kwargs.
 
-        CTR / COB / CST mutate ``past_key_values`` when present.
+        CTR / COB / CST / CDU mutate ``past_key_values`` when present.
         CLK injects the previously-stashed cache when the caller did
         *not* pass one, simulating cross-request reuse.
         """
@@ -404,10 +410,10 @@ class _ForwardFault(DynamicFault):
         cache_key = _find_cache_key(kwargs)
 
         if op == "CLK":
-            # If the caller didn't supply a cache and we have a stash,
-            # leak it in. The HF forward will then run as if the user
-            # had passed an existing cache; for a fresh request, this
-            # is the cross-request leak the operator describes.
+            # If the caller did not supply a cache and we have a stash,
+            # inject the stash. The forward then runs as if the user had
+            # passed an existing cache. For a fresh request, this is the
+            # cross-request leak the operator describes.
             if cache_key is None and self._cache_stash is not None:
                 kwargs["past_key_values"] = self._cache_stash
                 kwargs["use_cache"] = True
@@ -431,6 +437,12 @@ class _ForwardFault(DynamicFault):
         if op == "CTR":
             length = int(self.param_value) if self.param_value is not None else 8
             kwargs[cache_key] = _truncate_cache(cache, length)
+        elif op == "CDU":
+            # Desynchronized update: drop the most recent appended K, V so
+            # attention and prediction read cached states that are one step
+            # behind the current decoding step. Cache tensor shape is
+            # otherwise preserved per layer.
+            kwargs[cache_key] = _desync_cache(cache)
         elif op == "COB":
             shift = int(self.param_value) if self.param_value is not None else 1
             kwargs[cache_key] = _shift_cache(cache, shift)
@@ -454,6 +466,9 @@ class _ForwardFault(DynamicFault):
                                 first_only=True)
         if op == "SUC":
             return _map_tensors(out, lambda x: x.to(torch.float16).to(x.dtype), first_only=True)
+        if op == "KRP":
+            low = _reduced_precision_dtype(self.param_value)
+            return _map_tensors(out, lambda x: x.to(low).to(x.dtype), first_only=True)
         if op == "OOD":
             return _map_tensors(out, _rotate_last_dim, first_only=True)
         if op == "CLK":
@@ -495,6 +510,16 @@ def _zero_rows(param: torch.Tensor, frac: float) -> None:
         param.zero_()
         return
     param[:_n_rows(param, frac)].zero_()
+
+
+def _zero_cols(param: torch.Tensor, frac: float) -> None:
+    """Zero a contiguous block of feature columns (last dim), preserving shape."""
+    if param.ndim < 2:
+        _zero_rows(param, frac)
+        return
+    cols = param.shape[-1]
+    n = max(1, min(cols, int(round(cols * frac))))
+    param[..., :n].zero_()
 
 
 def _swap_rows(param: torch.Tensor, frac: float) -> None:
@@ -584,6 +609,17 @@ def _initialize(param: torch.Tensor, scheme: Any | None) -> None:
         nn.init.xavier_uniform_(param)
     else:
         nn.init.uniform_(param, -0.02, 0.02)
+
+
+def _reduced_precision_dtype(name: Any | None) -> torch.dtype:
+    key = str(name or "fp16").lower()
+    if key in {"bf16", "bfloat16"}:
+        return torch.bfloat16
+    if key in {"tf32", "fp16", "float16", "half"}:
+        # tf32 has no distinct tensor dtype; fp16 is the closest
+        # reduced-precision round-trip we can apply to a trace tensor.
+        return torch.float16
+    return torch.float16
 
 
 def _activation_module(name: Any | None) -> nn.Module:
@@ -857,6 +893,25 @@ def _shift_along_seq(t: torch.Tensor, shift: int) -> torch.Tensor:
         if keep > 0:
             out[..., :keep, :] = t[..., s:s + keep, :]
     return out
+
+
+def _desync_cache(cache: Any) -> Any:
+    """CDU: withhold the most recent appended K/V from every cache layer.
+
+    Dropping the last cached position across all layers leaves attention
+    and prediction reading states that lag the current decoding step by
+    one position, while each per-layer cache tensor keeps a valid shape.
+    """
+    new_layers: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for idx, k, v in _iter_cache_layers(cache):
+        if torch.is_tensor(k) and torch.is_tensor(v) and k.dim() >= 3 and k.shape[-2] >= 2:
+            k_new = k[..., :-1, :]
+            v_new = v[..., :-1, :]
+        else:
+            k_new, v_new = k, v
+        _set_cache_layer(cache, idx, k_new, v_new)
+        new_layers.append((k_new, v_new))
+    return _rebuild_cache(cache, new_layers)
 
 
 def _cst_layer_indices(scope: str, n_layers: int) -> set[int]:

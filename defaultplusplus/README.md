@@ -70,7 +70,7 @@ print(diagnosis.to_dict())
 #   'detection_prob':  0.92,
 #   'category':        'qkv',
 #   'category_prob':   0.81,
-#   'root_cause':      'zero_query',
+#   'root_cause':      'parameter_initialization',
 #   'root_cause_prob': 0.74,
 #   'group_importance': {'qkv_alignment': 3.2, 'attention': 1.7, ...},
 # }
@@ -192,7 +192,10 @@ literature:
 | `mrpc`         | encoder  | (accuracy + F1) / 2               | ↑         |
 | `qqp`          | encoder  | (accuracy + F1) / 2               | ↑         |
 | `stsb`         | encoder  | (Pearson + Spearman) / 2          | ↑         |
-| `wikitext2`    | decoder  | eval_loss                         | ↓         |
+| `lambada`      | decoder  | log-perplexity                    | ↓         |
+| `ptb`          | decoder  | log-perplexity                    | ↓         |
+| `wikitext2`    | decoder  | log-perplexity                    | ↓         |
+| `openwebtext`  | decoder  | log-perplexity                    | ↓         |
 
 Adding a new task means registering one `TaskMetricSpec` in
 [`benchmark/task_metrics.py`](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/blob/main/defaultplusplus/src/defaultplusplus/benchmark/task_metrics.py);
@@ -279,7 +282,7 @@ defaultplusplus/
       feature_construction.py  layer / step / epoch / phase aggregation
       metrics/                 attention, gradient, logit, structural, ...
     deform/                    mutation engine (research)
-      operators.py             45 mutation operators (catalog)
+      operators.py             52 mutation operators (catalog)
       operator_impls/          per-operator injector implementations
       injection.py             StaticFault / DynamicFault context managers
       validation.py            structural verifier + sign-flip kill test
@@ -311,7 +314,7 @@ defaultplusplus/
   configs/base.yaml                       hyperparameter config
   examples/                               runnable demos
   scripts/                                local + Compute Canada scripts
-  tests/                                  pytest suite (201 tests)
+  tests/                                  pytest suite
   pyproject.toml                          PEP 621 metadata + build config
   LICENSE                                 Apache-2.0
   CHANGELOG.md                            version history

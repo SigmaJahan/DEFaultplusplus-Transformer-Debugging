@@ -17,7 +17,7 @@ def test_registry_covers_paper_tasks() -> None:
         # GLUE
         "sst2", "qnli", "rte", "mnli", "mrpc", "qqp", "stsb", "cola",
         # Decoder LM
-        "wikitext2", "wikitext",
+        "lambada", "ptb", "wikitext2", "wikitext", "openwebtext",
     }
     missing = expected - set(TASK_METRICS)
     assert not missing, f"registry missing tasks: {sorted(missing)}"

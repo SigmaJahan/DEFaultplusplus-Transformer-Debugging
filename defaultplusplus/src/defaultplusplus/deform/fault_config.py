@@ -61,7 +61,7 @@ class Mutant:
                           runs.
         p_value:          one-sided sign-flip permutation p-value. The
                           floor at n=5 seeds is 1 / 2^5 ≈ 0.031.
-        killed:           True if ``p_value <= alpha`` (default 0.05).
+        killed:           True if ``p_value < alpha`` (default 0.05).
         feature_vector:   the labeled fixed-length instance produced by
                           the feature-construction pipeline (delta of
                           faulty − clean per metric, then aggregated).

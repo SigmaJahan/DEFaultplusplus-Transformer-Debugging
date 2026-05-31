@@ -301,7 +301,7 @@ class ModelInspector:
                     qkv_style='fused',
                 )
 
-        # Fallback: just return the attention module without specific QKV names
+        # Fallback: return the attention module without specific QKV names
         return AttentionPattern(
             module_attr=attn_attr,
             qkv_names=(),

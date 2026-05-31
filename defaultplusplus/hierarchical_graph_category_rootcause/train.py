@@ -43,7 +43,8 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import (f1_score, roc_auc_score, accuracy_score,
                              precision_score, recall_score)
-from sklearn.model_selection import GroupKFold, StratifiedShuffleSplit
+from sklearn.model_selection import (GroupKFold, StratifiedGroupKFold,
+                                      StratifiedShuffleSplit)
 from sklearn.preprocessing import StandardScaler
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +56,7 @@ from src.data.loader import prepare_dataset_from_csv
 from src.data.feature_processor import apply_processing_in_fold
 from src.data.feature_groups import build_group_indices, get_group_sizes
 from src.data.fundamental_fpg import fundamental_to_feature_group_adjacency
+from defaultplusplus.deform import root_cause_label_space
 
 from model import HierarchicalDiagnosisModel
 from losses import hierarchical_loss, compute_detection_weights
@@ -69,6 +71,67 @@ def set_seed(s):
     torch.manual_seed(s)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(s)
+
+
+def validate_label_space(arch, category_to_rootcauses):
+    """Check the discovered label space against the official taxonomy.
+
+    The official Level-3 label space is 40 root causes across 11
+    categories for encoders and 45 across 12 for decoders
+    (``deform.root_cause_label_space``). The benchmark CSV may contain a
+    subset when not every operator has been run yet. We warn on the two
+    kinds of mismatch rather than crash, so partial data still trains:
+
+      - missing: a taxonomy (category, root cause) absent from the data,
+        which usually means the benchmark has not been fully regenerated.
+      - unexpected: a (category, root cause) in the data that is not in
+        the taxonomy, which indicates taxonomy drift to investigate.
+    """
+    def _norm(s):
+        # Normalize surface form so "KV Cache"/"kv_cache" and
+        # "Parameter Initialization"/"parameter_initialization" compare
+        # equal across the writer's official names and any display-name
+        # variant used in the processed CSV.
+        return str(s).strip().lower().replace(" ", "_").replace("-", "_")
+
+    canonical = {
+        comp.value: set(rcs)
+        for comp, rcs in root_cause_label_space(arch).items()
+    }
+    discovered = {
+        cat: {rc for _, rc in pairs}
+        for cat, pairs in category_to_rootcauses.items()
+    }
+
+    canon_pairs = {(_norm(c), _norm(r)) for c, rcs in canonical.items() for r in rcs}
+    disc_pairs = {(_norm(c), _norm(r)) for c, rcs in discovered.items() for r in rcs}
+
+    missing = sorted(canon_pairs - disc_pairs)
+    unexpected = sorted(disc_pairs - canon_pairs)
+
+    n_canon_rc = len(canon_pairs)
+    n_disc_rc = len(disc_pairs & canon_pairs)
+    print(f"  Label space ({arch}): {n_disc_rc}/{n_canon_rc} taxonomy "
+          f"root causes present across {len(discovered)} categories "
+          f"(taxonomy: {len(canonical)})")
+
+    if missing:
+        print(f"  [warn] {len(missing)} taxonomy root cause(s) absent from "
+              f"the data (benchmark not fully regenerated?): "
+              f"{', '.join(f'{c}/{r}' for c, r in missing[:8])}"
+              + (" ..." if len(missing) > 8 else ""))
+    if unexpected:
+        print(f"  [warn] {len(unexpected)} root cause(s) in the data are "
+              f"outside the taxonomy (drift?): "
+              f"{', '.join(f'{c}/{r}' for c, r in unexpected[:8])}"
+              + (" ..." if len(unexpected) > 8 else ""))
+
+    return {
+        "expected_root_causes": n_canon_rc,
+        "discovered_root_causes": n_disc_rc,
+        "missing": missing,
+        "unexpected": unexpected,
+    }
 
 
 def load_data(arch):
@@ -103,8 +166,7 @@ def load_data(arch):
     X = df[feature_cols].values.astype(np.float32)
     feature_names = feature_cols
     groups = (df["model_name"].astype(str) + "__" +
-              df["dataset_name"].astype(str) + "__" +
-              df["seed"].astype(str)).values
+              df["dataset_name"].astype(str)).values
 
     # Detection labels: killed=1 -> faulty, killed=0 or baseline -> clean
     # baseline rows have killed=NaN, treat as clean
@@ -144,6 +206,8 @@ def load_data(arch):
         category_to_rootcauses[cat_name] = list(zip(global_idxs, subcats))
         rootcause_local_labels[cat_name] = {gi: li for li, gi in enumerate(global_idxs)}
 
+    label_space_report = validate_label_space(arch, category_to_rootcauses)
+
     return {
         "X": X,
         "groups": groups,
@@ -157,6 +221,7 @@ def load_data(arch):
         "rootcause_local_labels": rootcause_local_labels,
         "n_categories": len(faulty_categories),
         "category_sizes": {cat: len(rcs) for cat, rcs in category_to_rootcauses.items()},
+        "label_space_report": label_space_report,
     }
 
 
@@ -595,18 +660,29 @@ def split_train_val(X, y_detect, y_category, y_rootcause, val_fraction=0.2, seed
 
 def train_one_fold(model, X_tr, y_det_tr, y_cat_tr, y_rc_tr,
                    group_indices, category_names, rootcause_local_labels,
-                   config, use_sep=True):
-    """Train one CV fold with proper train/val split and early stopping.
+                   config, use_sep=True, val_split=None):
+    """Train one fold with a train/val split and early stopping.
+
+    When ``val_split`` is given as a ``(train_idx, val_idx)`` pair of index
+    arrays into ``X_tr``, that split provides the early-stopping validation
+    set. Otherwise an internal stratified 80/20 split is used.
 
     Returns (scaler fitted on full training data, training_curves dict).
     """
     device = next(model.parameters()).device
 
-    # --- Split training into train/val (80/20 stratified) -----------------
-    (X_t_raw, y_det_t_raw, y_cat_t_raw, y_rc_t_raw,
-     X_v, y_det_v, y_cat_v, y_rc_v) = split_train_val(
-        X_tr, y_det_tr, y_cat_tr, y_rc_tr,
-        val_fraction=0.2, seed=config.get("seed", 42))
+    # --- Resolve the train/val split for early stopping -------------------
+    if val_split is not None:
+        in_idx, val_idx = val_split
+        X_t_raw, y_det_t_raw = X_tr[in_idx], y_det_tr[in_idx]
+        y_cat_t_raw, y_rc_t_raw = y_cat_tr[in_idx], y_rc_tr[in_idx]
+        X_v, y_det_v = X_tr[val_idx], y_det_tr[val_idx]
+        y_cat_v, y_rc_v = y_cat_tr[val_idx], y_rc_tr[val_idx]
+    else:
+        (X_t_raw, y_det_t_raw, y_cat_t_raw, y_rc_t_raw,
+         X_v, y_det_v, y_cat_v, y_rc_v) = split_train_val(
+            X_tr, y_det_tr, y_cat_tr, y_rc_tr,
+            val_fraction=0.2, seed=config.get("seed", 42))
 
     # --- Fit scaler on training portion, transform both -------------------
     scaler = StandardScaler()
@@ -709,7 +785,8 @@ def train_one_fold(model, X_tr, y_det_tr, y_cat_tr, y_rc_tr,
                 # Detection F1 on val
                 det_logits = model.detect(z_v)
                 det_preds = det_logits.argmax(-1).cpu().numpy()
-                det_f1 = f1_score(y_det_v, det_preds, average="macro")
+                det_f1 = f1_score(y_det_v, det_preds, average="binary",
+                                  pos_label=1, zero_division=0)
 
                 # Category F1 on val (faulty only)
                 faulty_v = y_det_v == 1
@@ -799,6 +876,7 @@ def train_one_fold(model, X_tr, y_det_tr, y_cat_tr, y_rc_tr,
         group_indices, category_names, rootcause_local_labels)
 
     training_curves["embedding_snapshots"] = embedding_snapshots
+    training_curves["best_val_metric"] = float(best_metric)
     return scaler_full, training_curves
 
 
@@ -827,12 +905,15 @@ def evaluate_one_fold(model, scaler, X_tr, X_te,
         det_preds = det_logits.argmax(-1).cpu().numpy()
 
         auroc = float(roc_auc_score(y_det_te, det_probs)) if len(np.unique(y_det_te)) > 1 else 0.0
-        det_f1 = float(f1_score(y_det_te, det_preds, average="macro"))
+        det_f1 = float(f1_score(y_det_te, det_preds, average="binary", pos_label=1,
+                                zero_division=0))
         det_acc = float(accuracy_score(y_det_te, det_preds))
         det_f1_weighted = float(f1_score(y_det_te, det_preds, average="weighted"))
         det_f1_micro = float(f1_score(y_det_te, det_preds, average="micro"))
-        det_precision = float(precision_score(y_det_te, det_preds, average="macro", zero_division=0))
-        det_recall = float(recall_score(y_det_te, det_preds, average="macro", zero_division=0))
+        det_precision = float(precision_score(y_det_te, det_preds, average="binary",
+                                              pos_label=1, zero_division=0))
+        det_recall = float(recall_score(y_det_te, det_preds, average="binary",
+                                        pos_label=1, zero_division=0))
 
         # -- Stage 2: Categorization (faulty samples only) -----------------
         faulty_te = y_det_te == 1
@@ -1078,42 +1159,67 @@ def run_experiment(arch, use_graph=True, use_sep=True, config=None):
     y_category = data["y_category"]
     y_rootcause = data["y_rootcause"]
 
-    gkf = GroupKFold(n_splits=5)
+    n_outer = config.get("n_outer_folds", 5)
+    n_inner = config.get("n_inner_folds", 5)
+    outer_cv = GroupKFold(n_splits=n_outer)
     fold_results = []
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    for fold_idx, (tr_idx, te_idx) in enumerate(gkf.split(X, y_detect, groups)):
+    def _fit_model(X_tr_in, y_det_in, y_cat_in, y_rc_in, g_dims, g_names, g_idx,
+                   val_split=None):
+        """Build and train one model on the given training portion."""
+        model = build_model(
+            arch, mode, X_tr_in.shape[1], g_dims, g_names,
+            data["n_categories"], data["category_sizes"],
+            config, use_graph=use_graph).to(device)
+        scaler, curves = train_one_fold(
+            model, X_tr_in, y_det_in, y_cat_in, y_rc_in,
+            g_idx, data["category_names"], data["rootcause_local_labels"],
+            config, use_sep=use_sep, val_split=val_split)
+        return model, scaler, curves
+
+    for fold_idx, (tr_idx, te_idx) in enumerate(outer_cv.split(X, y_detect, groups)):
         set_seed(42 + fold_idx)
         t0 = time.time()
 
-        # Feature processing
+        # Feature processing is fit on the outer training portion only.
         X_tr, X_te, feat_names_proc, g_idx, proc_log = apply_processing_in_fold(
             X[tr_idx], X[te_idx], feature_names, y_detect[tr_idx], arch)
 
         g_dims = {g: len(i) for g, i in g_idx.items()}
         g_names = sorted(g_dims)
 
-        # Build model (group_dims passed to both modes for capacity matching)
-        model = build_model(
-            arch, mode, X_tr.shape[1], g_dims, g_names,
-            data["n_categories"], data["category_sizes"],
-            config, use_graph=use_graph)
+        y_det_tr, y_cat_tr, y_rc_tr = (y_detect[tr_idx], y_category[tr_idx],
+                                       y_rootcause[tr_idx])
+        inner_groups = groups[tr_idx]
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = model.to(device)
+        # --- Inner loop: StratifiedGroupKFold for model selection ----------
+        inner_cv = StratifiedGroupKFold(n_splits=n_inner)
+        # Stratify on category with clean folded into a single stratum so
+        # every category appears across inner folds.
+        strat = np.where(y_det_tr == 1, y_cat_tr + 1, 0)
+        best_inner = None
+        for inner_idx, (in_tr, in_val) in enumerate(
+                inner_cv.split(X_tr, strat, inner_groups)):
+            model, scaler, curves = _fit_model(
+                X_tr, y_det_tr, y_cat_tr, y_rc_tr,
+                g_dims, g_names, g_idx, val_split=(in_tr, in_val))
+            score = curves.get("best_val_metric", -1.0)
+            if best_inner is None or score > best_inner["score"]:
+                best_inner = {"score": score, "model": model,
+                              "scaler": scaler, "curves": curves}
 
-        # Train with proper train/val split
-        scaler, fold_curves = train_one_fold(
-            model, X_tr,
-            y_detect[tr_idx], y_category[tr_idx], y_rootcause[tr_idx],
-            g_idx, data["category_names"], data["rootcause_local_labels"],
-            config, use_sep=use_sep)
+        # Selected model from inner model selection, scored on the outer
+        # held-out model--task pairs.
+        model = best_inner["model"]
+        scaler = best_inner["scaler"]
+        fold_curves = best_inner["curves"]
 
-        # Evaluate on held-out test fold
         fold_res = evaluate_one_fold(
             model, scaler, X_tr, X_te,
-            y_detect[tr_idx], y_detect[te_idx],
-            y_category[tr_idx], y_category[te_idx],
-            y_rootcause[tr_idx], y_rootcause[te_idx],
+            y_det_tr, y_detect[te_idx],
+            y_cat_tr, y_category[te_idx],
+            y_rc_tr, y_rootcause[te_idx],
             g_idx, data["category_names"],
             data["rootcause_local_labels"], data["category_sizes"],
             data["category_to_rootcauses"])
@@ -1121,7 +1227,7 @@ def run_experiment(arch, use_graph=True, use_sep=True, config=None):
         fold_res["training_curves"] = fold_curves
         fold_results.append(fold_res)
         elapsed = time.time() - t0
-        print(f"  Fold {fold_idx+1}/5: "
+        print(f"  Fold {fold_idx+1}/{n_outer}: "
               f"Det={fold_res['detection_f1']:.4f}  "
               f"Cat={fold_res['category_f1']:.4f}  "
               f"RC(pred)={fold_res['rc_f1_predicted_macro']:.4f}  "

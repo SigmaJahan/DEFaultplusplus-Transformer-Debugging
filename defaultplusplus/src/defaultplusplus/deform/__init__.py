@@ -24,12 +24,14 @@ the paired clean and faulty fine-tuning traces.
 """
 
 from .operators import (
+    DECODER_ONLY_COMPONENTS,
     OPERATORS,
     Operator,
     OperatorComponent,
     OperatorSearchType,
     list_operators,
     operators_for_component,
+    root_cause_label_space,
 )
 from .fault_config import FaultConfiguration, Mutant
 from .injection import FaultInjector, StaticFault, DynamicFault
@@ -51,6 +53,8 @@ __all__ = [
     "OperatorSearchType",
     "list_operators",
     "operators_for_component",
+    "root_cause_label_space",
+    "DECODER_ONLY_COMPONENTS",
     "FaultConfiguration",
     "Mutant",
     "FaultInjector",

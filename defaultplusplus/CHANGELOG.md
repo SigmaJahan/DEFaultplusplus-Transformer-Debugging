@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Seven mutation operators completing the DEForm catalog to 52, matching
+  the published taxonomy: `QHD` (QKV head repartition), `KRP` and `KMC`
+  (kernel numerical precision and memory), `CDU` (desynchronized cache
+  update), `EZD` (zero embedding feature dimensions), `NWD` (weight-decay
+  LayerNorm parameters), and `RDR` (residual dropout rate).
+- `root_cause_label_space(arch)`, the official Level-3 label space
+  (40 root causes for encoders, 45 for decoders), exported from
+  `defaultplusplus.deform`.
+- Decoder task specs for `lambada`, `ptb`, and `openwebtext` in the
+  kill-test metric registry, scored as log-perplexity.
+- Label-space validation in the training loader that warns when the
+  benchmark CSV is missing official root causes or contains root causes
+  outside the taxonomy.
+
+### Changed
+- Diagnostic-model training now uses nested grouped cross-validation
+  (5 outer x 5 inner) grouped by the model-task pair, with the inner loop
+  doing `StratifiedGroupKFold` model selection.
+- Level-1 fault detection now reports binary F1 (the two classes are
+  balanced by construction) instead of macro F1.
+- The group-level FPG adjacency is built from the forward and structural
+  mechanisms (M1, M2, M3, M4, M7) only; backward gradient coupling (M5)
+  enters through gradient features and architecture-wide intervention
+  (M6) through fault labels.
+- The gradient feature block reports six global statistics so the
+  optimization group stays at 21 features.
+- The mutant kill rule uses strict `p < alpha`.
+
 ## [0.4.1] - 2026-05-04
 
 ### Changed

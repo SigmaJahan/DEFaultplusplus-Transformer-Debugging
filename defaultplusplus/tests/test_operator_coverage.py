@@ -6,16 +6,16 @@ import torch.nn as nn
 
 EXPECTED_OPERATOR_IDS = [
     "MZM", "MIM", "MRM", "MCB",
-    "QZQ", "QZK", "QZV", "QSW", "QTH", "QFG",
+    "QZQ", "QZK", "QZV", "QSW", "QTH", "QFG", "QHD",
     "SDS", "SPD", "SUC",
     "POE", "PSI", "PTL",
-    "KSB", "KMD", "KFT",
+    "KSB", "KMD", "KFT", "KRP", "KMC",
     "VSH", "VEC",
-    "CST", "COB", "CTR", "CLK",
-    "ETZ", "ESW", "ESS",
+    "CST", "CDU", "COB", "CTR", "CLK",
+    "ETZ", "ESW", "ESS", "EZD",
     "FSW", "FDN", "FCA", "FRG", "FWI",
-    "NSG", "NZG", "NSB", "NCE",
-    "RRS", "RSR", "RIN", "RGC",
+    "NSG", "NZG", "NSB", "NCE", "NWD",
+    "RRS", "RSR", "RIN", "RGC", "RDR",
     "OSL", "OZR", "ORI", "OOD",
 ]
 
@@ -24,6 +24,28 @@ def test_operator_catalog_has_exact_expected_ids() -> None:
     from defaultplusplus.deform import OPERATORS
 
     assert list(OPERATORS.keys()) == EXPECTED_OPERATOR_IDS
+    assert len(OPERATORS) == 52
+
+
+def test_catalog_has_twelve_categories() -> None:
+    from defaultplusplus.deform import OPERATORS, OperatorComponent
+
+    categories = {op.component for op in OPERATORS.values()}
+    assert categories == set(OperatorComponent)
+    assert len(categories) == 12
+
+
+def test_root_cause_label_space_matches_paper() -> None:
+    """Encoders cover 40 root causes (11 categories); decoders 45 (12)."""
+    from defaultplusplus.deform import root_cause_label_space
+
+    enc = root_cause_label_space("encoder")
+    dec = root_cause_label_space("decoder")
+
+    assert sum(len(v) for v in enc.values()) == 40
+    assert len(enc) == 11
+    assert sum(len(v) for v in dec.values()) == 45
+    assert len(dec) == 12
 
 
 def test_every_operator_has_registered_injector_class() -> None:
