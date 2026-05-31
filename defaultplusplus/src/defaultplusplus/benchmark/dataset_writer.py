@@ -28,7 +28,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Iterable
 
-from ..deform.fault_config import Mutant
+from ..deform.fault_config import CorrectSample, Mutant
 from ..deform.operators import OPERATORS
 
 
@@ -68,6 +68,26 @@ class DatasetWriter:
     def append(self, mutant: Mutant) -> None:
         """Append one mutant as a row in the CSV shard."""
         row = self._row_from_mutant(mutant)
+        with self._lock:
+            self._ensure_parent()
+            mode = "a" if self._header_written else "w"
+            with open(self.shard_path, mode, newline="") as fh:
+                writer = csv.DictWriter(fh, fieldnames=self._fieldnames())
+                if not self._header_written:
+                    writer.writeheader()
+                    self._header_written = True
+                writer.writerow(row)
+                fh.flush()
+                os.fsync(fh.fileno())
+
+    def append_correct_sample(self, sample: "CorrectSample") -> None:
+        """Append one retained clean variant as a correct-class CSV row.
+
+        The row carries ``detection_label = 0`` and empty category /
+        root-cause labels, since a correct sample has no fault. The
+        feature columns come from the paired base / variant traces.
+        """
+        row = self._row_from_correct_sample(sample)
         with self._lock:
             self._ensure_parent()
             mode = "a" if self._header_written else "w"
@@ -150,4 +170,25 @@ class DatasetWriter:
         if mutant.feature_vector:
             for col in self._fixed_columns:
                 row[col] = mutant.feature_vector.get(col)
+        return row
+
+    def _row_from_correct_sample(self, sample: CorrectSample) -> dict[str, Any]:
+        variant = sample.variant
+        row: dict[str, Any] = {
+            "identifier": variant.config_id(),
+            "model": variant.model,
+            "task": variant.task,
+            "operator_id": "",          # no fault operator for a correct sample
+            "layers": "",
+            "severity": "",
+            "param_value": "",
+            "seed": variant.variant_seed,
+            "detection_label": 0,        # correct (clean) class
+            "category_label": "",
+            "rootcause_label": "",
+            "p_value": sample.p_value,
+        }
+        if sample.feature_vector:
+            for col in self._fixed_columns:
+                row[col] = sample.feature_vector.get(col)
         return row

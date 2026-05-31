@@ -21,6 +21,12 @@ The top-level :class:`FaultConfiguration` bundles a fault specification
 :class:`Mutant` class is the per-config result: the killed flag, the
 permutation-test p-value, and the labeled feature instance produced from
 the paired clean and faulty fine-tuning traces.
+
+The *correct* class is built symmetrically. :class:`CleanVariant` describes
+a label-preserving perturbation of a clean base model, and
+:func:`run_one_clean_variant` runs it against the base model with the same
+kill test, retaining it as a :class:`CorrectSample` only when it stays
+statistically indistinguishable from the base model.
 """
 
 from .operators import (
@@ -33,7 +39,17 @@ from .operators import (
     operators_for_component,
     root_cause_label_space,
 )
-from .fault_config import FaultConfiguration, Mutant
+from .fault_config import (
+    CleanVariant,
+    CorrectSample,
+    FaultConfiguration,
+    Mutant,
+)
+from .clean_variants import (
+    DEFAULT_HYPERPARAM_GRID,
+    generate_clean_variants,
+    run_one_clean_variant,
+)
 from .injection import FaultInjector, StaticFault, DynamicFault
 from .operator_impls import (
     get_expected_modules,
@@ -57,6 +73,11 @@ __all__ = [
     "DECODER_ONLY_COMPONENTS",
     "FaultConfiguration",
     "Mutant",
+    "CleanVariant",
+    "CorrectSample",
+    "generate_clean_variants",
+    "run_one_clean_variant",
+    "DEFAULT_HYPERPARAM_GRID",
     "FaultInjector",
     "StaticFault",
     "DynamicFault",

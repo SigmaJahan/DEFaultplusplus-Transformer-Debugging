@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Correct-class construction in DEForm. `generate_clean_variants` produces
+  label-preserving variants of a clean base model (varying the seed and
+  hyperparameters within behavior-preserving ranges), and
+  `run_one_clean_variant` tests each against the base model with the same
+  sign-flip kill test, retaining the ones that stay indistinguishable as
+  `detection_label = 0` samples. Exposed on the benchmark CLI through
+  `defaultpp-benchmark --clean-variants N`.
 - Seven mutation operators completing the DEForm catalog to 52, matching
   the published taxonomy: `QHD` (QKV head repartition), `KRP` and `KMC`
   (kernel numerical precision and memory), `CDU` (desynchronized cache

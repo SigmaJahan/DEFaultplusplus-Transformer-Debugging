@@ -1,0 +1,36 @@
+{
+  "issue_id": 35896,
+  "sheet_row_id": 44,
+  "title": "Qwen2FlashAttention sliding windows are applied to wrong layers",
+  "issue_url": "https://github.com/huggingface/transformers/issues/35896",
+  "source_repo": "huggingface/transformers",
+  "source_component": "src/transformers/models/qwen2/modular_qwen2.py",
+  "issue_summary": "Qwen2 used the wrong layer-selection condition for sliding-window attention, so the implementation applied SWA to the top layers instead of the bottom layers described by the config.",
+  "root_cause": {
+    "summary": "The condition was effectively reversed: layer_idx >= max_window_layers was used where layer_idx < max_window_layers was expected.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "The wrong subset of layers uses sliding-window attention, changing the computation graph even when max_window_layers is set to cover the lower stack.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/huggingface/transformers/pull/36162",
+    "merge_commit": "96f01a36ac60c57be279cb7f027eac7e37fa90e8"
+  },
+  "local_reproduction": {
+    "case_file": "realworld_evaluation/cases/issue_35896_qwen2_window_layers.py",
+    "runner_slug": "issue_35896_qwen2_window_layers",
+    "dataset": "synthetic token states",
+    "mapping": "The local case runs the same toy stack twice, once with the reversed layer predicate and once with the corrected predicate, and records the resulting layer schedule and output delta."
+  },
+  "issue_contract": {
+    "trigger": "Configure only the lower stack to use sliding-window attention and run a multi-layer decoder.",
+    "mechanism": "The buggy predicate routes sliding-window attention to the wrong layer indices.",
+    "observable_symptom": "The wrong subset of layers uses sliding-window attention and outputs change."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "realworld_evaluation/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces the reversed layer-selection predicate for sliding-window attention.",
+    "issue_level_observable_claim": "This case reproduces the reported symptom that the wrong layers use sliding-window attention and outputs change as a result.",
+    "exact_historical_replay": false
+  }
+}

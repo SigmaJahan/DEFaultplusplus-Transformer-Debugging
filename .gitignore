@@ -45,6 +45,14 @@ results/
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+*.log
+*.out
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
+*.lop
 
 # Pretrained weights are tracked under
 # defaultplusplus/src/defaultplusplus/pretrained/weights/ — they ship
@@ -67,8 +75,12 @@ evaluation/
 # Private planning + paper drafts that should not ship in the public
 # repo. Anchored with a leading ``/`` so they only match the
 # top-level files, not any same-named file deeper in the tree.
+# The compiled manuscript PDF (default++_manuscript.pdf) is intentionally
+# NOT ignored so it can ship in the public repo; only the LaTeX source
+# is kept private.
 /remaining-tasks.md
 /DEFault++.pdf
+/main.tex
 DEFaultpp_Tosem_2026/
 
 

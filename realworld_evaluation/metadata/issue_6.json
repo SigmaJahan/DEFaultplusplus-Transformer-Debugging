@@ -1,0 +1,36 @@
+{
+  "issue_id": 6,
+  "sheet_row_id": 35,
+  "title": "Possible key error in ModelLoader",
+  "issue_url": "https://github.com/google-ai-edge/ai-edge-torch/issues/6",
+  "source_repo": "google-ai-edge/ai-edge-torch",
+  "source_component": "attention checkpoint loader mapping",
+  "issue_summary": "Loading a decoder-only transformer checkpoint failed because the loader expected fused qkv_projection parameters that were not mapped from the checkpoint layout being converted.",
+  "root_cause": {
+    "summary": "The loader did not correctly translate source checkpoint attention weights into the fused qkv_projection format expected by the target model.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "state_dict loading raises missing-key errors for qkv_projection and related attention projection parameters.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/google-ai-edge/litert-torch/pull/7",
+    "merge_commit": "19a168c7f1776168248a861e733c88c1da7c9d06"
+  },
+  "local_reproduction": {
+    "case_file": "realworld_evaluation/cases/issue_6_qkv_projection_loader.py",
+    "runner_slug": "issue_6_qkv_projection_loader",
+    "dataset": "synthetic checkpoint tensors",
+    "mapping": "The local case builds a checkpoint with split q, k, and v weights, lets the buggy loader search for a fused qkv_projection key directly, and then fixes the mapping by explicitly fusing those weights."
+  },
+  "issue_contract": {
+    "trigger": "Load a checkpoint with split q, k, and v weights into a model expecting fused qkv projection weights.",
+    "mechanism": "The buggy loader fails to fuse and remap the split projection tensors into qkv_projection.",
+    "observable_symptom": "The load path reports missing qkv projection keys."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "realworld_evaluation/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces the faulty checkpoint-to-model mapping for fused qkv projections.",
+    "issue_level_observable_claim": "This case reproduces the reported missing-key load failure for qkv_projection parameters.",
+    "exact_historical_replay": false
+  }
+}

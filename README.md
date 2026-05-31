@@ -261,6 +261,11 @@ DEFaultplusplus-Transformer-Debugging/
     examples/               runnable demos
     scripts/                local + cluster reproduction scripts
     tests/                  pytest suite
+  realworld_evaluation/     real-world GitHub-issue fault reproductions
+    cases/                  one reproduction script per issue
+    metadata/               per-issue source, root cause, and contract
+    contract_checks.py      mechanism / symptom / buggy-vs-fixed checks
+    run_benchmarks.py       runs every case and reports the contracts
 ```
 
 ---
@@ -270,6 +275,7 @@ DEFaultplusplus-Transformer-Debugging/
 | Document | What it covers |
 | --- | --- |
 | [`README.md`](README.md) | this landing page: overview, install, quick start |
+| [`default++_manuscript.pdf`](default++_manuscript.pdf) | the full manuscript (in preparation) |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | the method explained figure by figure |
 | [`docs/SPEC.md`](docs/SPEC.md) | the frozen feature-vector output schema |
 | [`defaultplusplus/README.md`](defaultplusplus/README.md) | package reference: full API, visualization, benchmark CLI, build/publish |

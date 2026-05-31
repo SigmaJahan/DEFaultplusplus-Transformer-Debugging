@@ -233,8 +233,8 @@ python examples/extract_with_hf_trainer.py
 Once `[hf]` is installed, `defaultpp-benchmark` runs a paired
 clean / faulty fine-tune for every (model × task × operator ×
 severity × seed-tuple) configuration and writes one CSV row per
-killed mutant. The kill test uses the per-task scalar from the
-metric registry (see Supported benchmark tasks above).
+killed mutant (`detection_label = 1`). The kill test uses the per-task
+scalar from the metric registry (see Supported benchmark tasks above).
 
 ```bash
 defaultpp-benchmark \
@@ -244,8 +244,17 @@ defaultpp-benchmark \
   --operators QZQ,FCA \
   --severities low \
   --seeds 42,123,456,789,101112 \
+  --clean-variants 4 \
   --output data/encoder_benchmark.csv
 ```
+
+The `--clean-variants N` flag adds the **correct class**. For each
+(model, task) it generates `N` label-preserving clean variants of the
+base model (varying the seed and hyperparameters within
+behavior-preserving ranges), tests each against the base model with the
+same kill test, and writes the retained ones with `detection_label = 0`.
+A variant that satisfies the killed criterion is discarded, mirroring how
+the faulty path discards a surviving mutant.
 
 A configuration is **discarded** (not crashed) when:
 

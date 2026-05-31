@@ -1,0 +1,36 @@
+{
+  "issue_id": 11903,
+  "sheet_row_id": 50,
+  "title": "fuse_qkv_projections leaves LoRA attached to stale projection modules",
+  "issue_url": "https://github.com/huggingface/diffusers/issues/11903",
+  "source_repo": "huggingface/diffusers",
+  "source_component": "fuse_qkv_projections and LoRA adapter targeting",
+  "issue_summary": "fuse_qkv_projections merges q_proj, k_proj, and v_proj into one fused to_qkv layer and routes the forward pass through it. The original projection modules are kept so LoRA can attach to its declared adapter targets, but the forward pass no longer uses them, so LoRA updates parameters that no longer affect the output.",
+  "root_cause": {
+    "summary": "LoRA targets the split q/k/v projection modules, while the forward path reads only the fused to_qkv weight, so adapter updates land on a path that does not reach the output.",
+    "basis": "issue report"
+  },
+  "symptom": "Fine-tuning runs without error and the loss decreases, but model behavior does not change because the updated projection modules are not on the active forward path.",
+  "upstream_fix": {
+    "status": "not linked",
+    "pr_url": null,
+    "merge_commit": null
+  },
+  "local_reproduction": {
+    "case_file": "realworld_evaluation/cases/issue_11903_diffusers_qkv_fusion.py",
+    "runner_slug": "issue_11903_diffusers_qkv_fusion",
+    "dataset": "synthetic projection tensors",
+    "mapping": "The local case fuses q/k/v into to_qkv, applies a LoRA-style update to the stale split projections (buggy) versus the fused to_qkv weight (fixed), and shows that only the fixed path moves the forward output."
+  },
+  "issue_contract": {
+    "trigger": "Fuse the q, k, v projections into to_qkv and attach LoRA to the original split projection modules.",
+    "mechanism": "The buggy path updates the stale split projections while the forward pass reads only the fused to_qkv weight.",
+    "observable_symptom": "Parameters change during fine-tuning but the model output does not move."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "realworld_evaluation/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces the stale-projection update path that arises when LoRA targets the unfused projections after qkv fusion.",
+    "issue_level_observable_claim": "This case reproduces the issue-observable symptom that parameter updates do not change the model output because they land off the active forward path.",
+    "exact_historical_replay": false
+  }
+}

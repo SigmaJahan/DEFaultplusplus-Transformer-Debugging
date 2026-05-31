@@ -14,7 +14,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ..deform import FaultInjector, get_injector
+from ..deform import (
+    FaultInjector,
+    generate_clean_variants,
+    get_injector,
+    run_one_clean_variant,
+)
 from ..deform.fault_config import FaultConfiguration
 from ..deform.operators import OPERATORS
 from .config_grid import BenchmarkSpec, enumerate_configurations
@@ -222,6 +227,35 @@ def default_feature_builder(clean: list[dict[str, float]],
     return out
 
 
+def make_clean_fine_tune(base_fine_tune: HFFineTuneFn):
+    """Adapt an :class:`HFFineTuneFn` to the clean-variant call signature.
+
+    The faulty path calls ``fine_tune(model, task, seed, injector)``. The
+    correct path calls ``fine_tune(model, task, seed, hyperparams)`` with no
+    injector and a per-variant hyperparameter override. This adapter applies
+    the override (``learning_rate``, ``batch_size``, ``epochs``,
+    ``warmup_ratio`` when supported) by cloning the base fine-tune function
+    with patched attributes, then runs it with ``injector=None``.
+    """
+    import copy as _copy
+
+    def _clean_fine_tune(model: str, task: str, seed: int,
+                         hyperparams: dict[str, Any]) -> tuple[float, dict]:
+        if hyperparams:
+            fn = _copy.copy(base_fine_tune)
+            for key, value in hyperparams.items():
+                # Only patch attributes the fine-tune function actually
+                # carries; unknown keys (e.g. warmup_ratio when the trainer
+                # does not expose it) are ignored rather than failing.
+                if hasattr(fn, key):
+                    setattr(fn, key, value)
+        else:
+            fn = base_fine_tune
+        return fn(model, task, seed, None)
+
+    return _clean_fine_tune
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arch", required=True, choices=("encoder", "decoder"))
@@ -246,6 +280,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-train-samples", type=int, default=64)
     parser.add_argument("--max-eval-samples", type=int, default=64)
     parser.add_argument("--alpha", type=float, default=0.05)
+    parser.add_argument("--clean-variants", type=int, default=0,
+                        help=("Number of label-preserving clean variants to "
+                              "generate per (model, task) for the correct "
+                              "class. Each variant is tested against the base "
+                              "model with the same kill test; variants that "
+                              "stay indistinguishable are kept as correct "
+                              "samples. 0 disables correct-class generation."))
     parser.add_argument("--no-synthetic-fallback", action="store_true",
                         help="Fail instead of using a tiny synthetic dataset when HF datasets are unavailable.")
     return parser
@@ -318,22 +359,61 @@ def main(argv: Iterable[str] | None = None) -> int:
             print(f"[defaultpp-benchmark] DISCARDED {config.config_id()} "
                   f"({outcome.status.value}): {outcome.discard_reason}")
 
-    if outcomes:
-        feature_columns = sorted(
-            set().union(*(o.mutant.feature_vector.keys() for o in outcomes))
-        )
+    # ── Correct class: label-preserving clean variants ───────────────
+    # For each (model, task), generate clean variants of the base model
+    # and keep the ones that stay statistically indistinguishable from
+    # the base model under the same kill test. In the paper, the variant
+    # count per base model equals its killed-mutant count k; here it is
+    # the --clean-variants value.
+    correct_samples: list[Any] = []
+    if args.clean_variants > 0:
+        clean_fine_tune = make_clean_fine_tune(fine_tune)
+        base_hp = {
+            "learning_rate": args.learning_rate,
+            "batch_size": args.batch_size,
+            "epochs": args.epochs,
+        }
+        for model_name in _parse_csv(args.models):
+            for task in tasks:
+                task_spec = get_task_spec(task)
+                variants = generate_clean_variants(
+                    model_name, task, args.clean_variants, base_seed=seeds[0])
+                for variant in variants:
+                    sample = run_one_clean_variant(
+                        variant, clean_fine_tune, default_feature_builder,
+                        higher_is_better=task_spec.higher_is_better,
+                        alpha=args.alpha, seeds=seeds, base_hyperparams=base_hp,
+                    )
+                    if sample.retained:
+                        correct_samples.append(sample)
+                        print(f"[defaultpp-benchmark] CORRECT {variant.config_id()} "
+                              f"p={sample.p_value:.5g}")
+                    else:
+                        print(f"[defaultpp-benchmark] DISCARDED {variant.config_id()} "
+                              f"(clean): {sample.rejected_reason}")
+
+    if outcomes or correct_samples:
+        feature_key_sets = [o.mutant.feature_vector.keys() for o in outcomes]
+        feature_key_sets += [
+            s.feature_vector.keys() for s in correct_samples if s.feature_vector
+        ]
+        feature_columns = sorted(set().union(*feature_key_sets)) if feature_key_sets else []
         writer = DatasetWriter(output, fixed_columns=feature_columns)
         for outcome in outcomes:
             writer.append(outcome.mutant)
+        for sample in correct_samples:
+            writer.append_correct_sample(sample)
 
     if discarded:
         discard_log = output.with_name(f"{output.stem}.discarded.jsonl")
         _write_discard_log(discard_log, discarded)
         print(f"[defaultpp-benchmark] wrote discard log to {discard_log}")
 
+    n_rows = len(outcomes) + len(correct_samples)
     total = len(outcomes) + len(discarded)
-    print(f"[defaultpp-benchmark] wrote {len(outcomes)}/{total} row(s) to {output}; "
-          f"{len(discarded)} discarded")
+    print(f"[defaultpp-benchmark] wrote {n_rows} row(s) to {output} "
+          f"({len(outcomes)} faulty, {len(correct_samples)} correct); "
+          f"{len(discarded)} faulty config(s) discarded")
     if discarded:
         _print_discard_summary(discarded)
     return 0

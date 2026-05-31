@@ -1,0 +1,36 @@
+{
+  "issue_id": 36096,
+  "sheet_row_id": 24,
+  "title": "flex_attention does not output the full attention_weights with output_attention option",
+  "issue_url": "https://github.com/huggingface/transformers/issues/36096",
+  "source_repo": "huggingface/transformers",
+  "source_component": "flex_attention output_attentions path",
+  "issue_summary": "When output_attentions was requested through the flex_attention path, the implementation returned the wrong object instead of a full attention-weight tensor.",
+  "root_cause": {
+    "summary": "The attention API surfaced a summary quantity from the flex_attention path rather than the actual attention matrix expected by callers.",
+    "basis": "issue report"
+  },
+  "symptom": "The returned attention payload has the wrong shape and semantics, so downstream code asking for attention weights receives an invalid substitute.",
+  "upstream_fix": {
+    "status": "not linked",
+    "pr_url": null,
+    "merge_commit": null
+  },
+  "local_reproduction": {
+    "case_file": "realworld_evaluation/cases/issue_36096_flex_attention_weights.py",
+    "runner_slug": "issue_36096_flex_attention_weights",
+    "dataset": "synthetic q/k/v tensors",
+    "mapping": "The local case returns a logsumexp vector in the buggy path and the full softmax attention matrix in the fixed path, matching the shape and semantic mismatch described in the issue."
+  },
+  "issue_contract": {
+    "trigger": "Request attention outputs from the flex_attention path.",
+    "mechanism": "The buggy path returns a summary statistic instead of the attention-weight matrix.",
+    "observable_symptom": "The returned attention payload has the wrong shape and semantics."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "realworld_evaluation/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces the wrong-return-object bug in the attention-output path.",
+    "issue_level_observable_claim": "This case reproduces the reported observable symptom that the returned attention payload has the wrong shape and meaning.",
+    "exact_historical_replay": false
+  }
+}

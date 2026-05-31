@@ -1,0 +1,36 @@
+{
+  "issue_id": 19045,
+  "sheet_row_id": 9,
+  "title": "BertLMHeadModel with relative position embedding does not work correctly when use_cache is true",
+  "issue_url": "https://github.com/huggingface/transformers/issues/19045",
+  "source_repo": "huggingface/transformers",
+  "source_component": "src/transformers/models/bert/modeling_bert.py",
+  "issue_summary": "Relative-position BERT generation diverged between cached decoding and full recomputation because the relative distance tensor was wrong when past_key_values was supplied.",
+  "root_cause": {
+    "summary": "When use_cache was enabled, the relative position distance computation collapsed to zero-distance behavior instead of using the true query and key positions.",
+    "basis": "issue report and linked fix PR"
+  },
+  "symptom": "Cached decoding yields outputs that differ from a full forward pass over the same effective sequence.",
+  "upstream_fix": {
+    "status": "linked",
+    "pr_url": "https://github.com/huggingface/transformers/pull/20203",
+    "merge_commit": "f60eec40034adad7b6caac6339ceb51a4604a847"
+  },
+  "local_reproduction": {
+    "case_file": "realworld_evaluation/cases/issue_19045_bert_relative_cache.py",
+    "runner_slug": "issue_19045_bert_relative_cache",
+    "dataset": "synthetic token states",
+    "mapping": "The local case models the cached step with an incorrect zero-distance bias and compares it against the full-sequence relative-position result."
+  },
+  "issue_contract": {
+    "trigger": "Enable cached decoding while using relative position bias.",
+    "mechanism": "The buggy cached path collapses relative-position distances to a constant zero-distance bias.",
+    "observable_symptom": "Cached decoding diverges from full recomputation on the same effective sequence."
+  },
+  "reproduction_scope": {
+    "definitions_ref": "realworld_evaluation/REPRODUCTION_SCOPE.md",
+    "mechanism_level_claim": "This case reproduces collapse of relative-position distance handling in the cached path.",
+    "issue_level_observable_claim": "This case reproduces the reported symptom that cached decoding diverges from full recomputation.",
+    "exact_historical_replay": false
+  }
+}

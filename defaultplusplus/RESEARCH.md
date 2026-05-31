@@ -9,9 +9,10 @@ It is *not* user-facing. The user-facing PyPI documentation lives in
 [`README.md`](README.md) (package) and [`../README.md`](../README.md)
 (repository root).
 
-The scientific source of truth is [`../DEFault++.pdf`](../DEFault++.pdf).
-The frozen runtime output schema is
-[`../docs/SPEC.md`](../docs/SPEC.md).
+The scientific reference is the DEFault++ manuscript (in preparation).
+The method is walked through in
+[`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md), and the frozen
+runtime output schema is [`../docs/SPEC.md`](../docs/SPEC.md).
 
 ---
 
@@ -52,7 +53,7 @@ Concretely:
 | Diagnostic model training     | `hierarchical_graph_category_rootcause.train`                            | `results/.../*.json`         |
 | Ablation + plots              | `hierarchical_graph_category_rootcause.evaluate`                         | comparison table + figures   |
 | Post-hoc importance           | `hierarchical_graph_category_rootcause.posthoc_analysis`                 | importance JSON + plots      |
-| Baseline comparison           | `../baselines/run_baselines.py`                                          | per-baseline JSONs           |
+| Baseline comparison           | external (paper-artifact bundle, not in this repo)                       | per-baseline JSONs           |
 
 ---
 
@@ -75,7 +76,7 @@ DEFaultplusplus-Transformer-Debugging/
         feature_construction.py             layer/step/epoch/phase aggregator
         metrics/{attention,gradient,...}.py per-component metric modules
       deform/
-        operators.py                        45 mutation operators (Tables 7.1+7.2)
+        operators.py                        52 mutation operators (the catalog)
         operator_impls/                     per-operator injector implementations
         injection.py                        StaticFault, DynamicFault context managers
         validation.py                       sign-flip permutation test, verifier
@@ -86,10 +87,15 @@ DEFaultplusplus-Transformer-Debugging/
         runner.py                           paired runs + crash isolation
         task_metrics.py                     per-task kill-test metric registry
         dataset_writer.py                   shard CSV writer
-      diagnosis/, pretrained/, processing/, ui/   reserved for runtime roadmap
+      diagnosis/                            Predictor + load_pretrained()
+      processing/                           FeatureProcessor + RuntimeNormalizer
+      pretrained/weights/                   shipped encoder/decoder checkpoints
+      data/                                 benchmark download (defaultpp-bench-download)
+      viz/                                  matplotlib plots + HTML report
+      ui/                                   reserved for future CLI helpers
 
     hierarchical_graph_category_rootcause/  research-side training (NOT in wheel)
-      train.py                              5-fold CV training driver
+      train.py                              nested grouped CV training driver
       evaluate.py                           4-variant ablation driver
       posthoc_analysis.py                   permutation feature/group importance
       model.py                              HierarchicalDiagnosisModel
@@ -111,7 +117,7 @@ DEFaultplusplus-Transformer-Debugging/
       build_pypi.sh                         clean → build → twine check → upload
       cc/                                   Compute Canada SLURM scripts
         env.sh setup_env.sh bench_array.sh merge_shards.sh train.sh ablation.sh
-    tests/                                  pytest suite (134 tests)
+    tests/                                  pytest suite
       conftest.py                           sys.path shim for src/ + src/defaultplusplus
       test_phase0_gate.py                   structural gate
       test_phase1_gate.py                   feature-group gate
@@ -125,24 +131,25 @@ DEFaultplusplus-Transformer-Debugging/
     README.md                               package-side user reference
     RESEARCH.md                             this file
 
-  data/                                     DEFault-bench (consolidated CSVs)
-    encoder_v1_killed_binary.csv            9,560 encoder feature traces
-    decoder_v1_killed_binary.csv            9,310 decoder feature traces
+  docs/
+    ARCHITECTURE.md                         figure-by-figure method walk-through
+    SPEC.md                                 output schema + architecture + scope
+    figures/                                diagrams used across the docs
+
+  data/                                     DEFault-bench CSVs (fetched, not committed)
+    encoder_v1_killed_binary.csv            encoder feature traces
+    decoder_v1_killed_binary.csv            decoder feature traces
     encoder_absolute_filled_labeled.csv     mutation 'killed' labels (encoder)
     decoder_absolute_filled_labeled.csv     mutation 'killed' labels (decoder)
-    README.md                               data layout + MD5 checksums
-
-  baselines/                                baseline detection scripts
-    run_baselines.py                        DEFault, DeepFD, AutoTrainer, DeepDiagnosis
-
-  realworld_benchmark/                      real-world GitHub-issue evaluation
-    cases/, metadata/, run_benchmarks.py
-
-  user_study/                               developer-study assets
-  docs/SPEC.md                              output schema + architecture + roadmap
-  DEFault++.pdf                             scientific reference
   results/                                  generated outputs (gitignored)
 ```
+
+The benchmark CSVs under `data/` are downloaded from Zenodo with
+`defaultpp-bench-download` (or `download_bench(version="v1")`) rather
+than committed. The real-world GitHub-issue evaluation lives in
+`../realworld_evaluation/` (11 reproduced faults, one case file each).
+The baseline scripts and the developer-study assets live in the
+paper-artifact bundle outside this code repository.
 
 ---
 
@@ -186,7 +193,7 @@ All commands assume you are inside `defaultplusplus/`.
 
 ```bash
 make data-check                  # verify ../data/*.csv exist
-make train                       # 5-fold CV, both archs (~30 min CPU smoke)
+make train                       # nested grouped CV, both archs (~30 min CPU smoke)
 make ablation                    # 4 variants × 2 archs × 5 folds
 make baselines                   # DEFault, DeepFD, AutoTrainer, DeepDiagnosis
 make all                         # data-check + train + ablation + baselines
@@ -213,14 +220,15 @@ python -m hierarchical_graph_category_rootcause.evaluate \
 python -m hierarchical_graph_category_rootcause.posthoc_analysis \
        --arch both                                         # permutation importance
 
-python ../baselines/run_baselines.py --arch both           # baseline comparison
+# Baseline comparison (DEFault, DeepFD, AutoTrainer, DeepDiagnosis) runs
+# from the paper-artifact bundle, which is not part of this code repo.
 ```
 
 ### Tests
 
 ```bash
-pytest tests/                              # all 58 tests (~13s)
-pytest tests/test_dry_run.py -v            # 14 smoke tests (~1s)
+pytest tests/                              # full suite
+pytest tests/test_dry_run.py -v            # fast smoke tests (~1s)
 pytest tests/test_feature_extractor.py -v  # real-model API tests (~15s)
 bash scripts/dry_run_local.sh --quick      # imports + smoke + FPG sanity
 bash scripts/dry_run_local.sh --train      # also runs 1-epoch training
@@ -330,8 +338,9 @@ Code: `HierarchicalDiagnosisModel.explain_diagnosis` in `model.py`.
 
 ### Operator catalog (Tables 7.1 + 7.2)
 
-45 operators across 12 components, with three-letter IDs. Code:
-[`src/defaultplusplus/deform/operators.py`](src/defaultplusplus/deform/operators.py).
+52 operators across 12 components, with three-letter IDs. They cover 45
+root causes (40 for encoders, 45 for decoders; KV Cache is decoder-only).
+Code: [`src/defaultplusplus/deform/operators.py`](src/defaultplusplus/deform/operators.py).
 
 Operators have four search-type categories:
 
@@ -381,6 +390,30 @@ faulty = [0.70, 0.72, 0.68, 0.74, 0.71]
 killed, p = is_killed(clean, faulty, higher_is_better=True, alpha=0.05)
 # killed=True, p=0.03125 (= 1/32)
 ```
+
+### Correct class (Section 7.3.5)
+
+The faulty class comes from killed mutants. The correct class comes from
+clean base models with label-preserving perturbations. For each base model
+that produces `k` killed mutants, generate `k` clean variants, test each
+against the base model with the same kill test, and keep the ones that stay
+indistinguishable. Code:
+[`src/defaultplusplus/deform/clean_variants.py`](src/defaultplusplus/deform/clean_variants.py).
+
+```python
+from defaultplusplus.deform import generate_clean_variants, run_one_clean_variant
+
+variants = generate_clean_variants("bert-base-uncased", "sst2", k, base_seed=42)
+for variant in variants:
+    sample = run_one_clean_variant(
+        variant, fine_tune, feature_builder,
+        higher_is_better=True, seeds=SEEDS, base_hyperparams=base_hp)
+    # sample.retained is True only when the variant is NOT killed; a
+    # retained sample is written with detection_label = 0.
+```
+
+The CLI generates the correct class with `defaultpp-benchmark
+--clean-variants N` (N variants per model-task pair).
 
 ---
 
@@ -439,7 +472,7 @@ tested without HF or GPUs (see `tests/test_dry_run.py`).
 
 3. **Add coverage in two places**:
    - `tests/test_operator_coverage.py` — append `"XYZ"` to
-     `EXPECTED_OPERATOR_IDS` so the locked 45-id list grows in step.
+     `EXPECTED_OPERATOR_IDS` so the locked operator-id list grows in step.
    - `tests/test_dry_run.py::test_all_operator_injectors_construct_verify_and_restore`
      iterates the full catalog, so the operator must construct on the
      tiny model and pass the structural verifier with no extra work.
@@ -551,12 +584,12 @@ flat dict[str, float]                      # the feature vector
 ### Diagnostic-model training
 
 ```
-data/*.csv (3,739 instances)
+data/*.csv (DEFault-bench instances)
    │
    ▼
 prepare_dataset_from_csv (loader.py)       # X, y_detect, y_category, y_rootcause
    │
-   ▼ (per CV fold)
+   ▼ (per outer CV fold; preprocessing fit on the fold's training data)
 apply_processing_in_fold (feature_processor.py)
    ├─ Step 1: drop NaN > 40%
    ├─ Step 2: log1p high-variance cols
@@ -592,7 +625,7 @@ results/.../{arch}_{variant}.json
 # One-time on the login node
 bash defaultplusplus/scripts/cc/setup_env.sh
 
-# Stage 1: build DEFault-bench (GPU array, ~3,739 tasks → 18,600 GPU-hours)
+# Stage 1: build DEFault-bench (GPU array; one task per configuration)
 sbatch defaultplusplus/scripts/cc/bench_array.sh
 
 # Concatenate per-task shards
@@ -606,8 +639,9 @@ sbatch defaultplusplus/scripts/cc/ablation.sh
 ```
 
 Edit `--account=def-yourgroup` in each `*.sh` to match your CC
-allocation. Edit `--array=0-3738%64` in `bench_array.sh` to match
-the number of configurations you generated.
+allocation. Edit the `--array=0-N%64` range in `bench_array.sh` to
+match the number of configurations you generated (`N` is the config
+count minus one).
 
 ---
 
@@ -629,7 +663,7 @@ the number of configurations you generated.
 ```bash
 # Inspect the wheel that PyPI would receive
 python -c "import zipfile, sys; z=zipfile.ZipFile(sys.argv[1]); print('\n'.join(z.namelist()))" \
-       dist/defaultplusplus-0.2.0-py3-none-any.whl
+       dist/defaultplusplus-*-py3-none-any.whl
 
 # Inspect the FPG group-level adjacency
 python -c "from src.data.fundamental_fpg import fundamental_to_feature_group_adjacency; \
@@ -644,9 +678,12 @@ python -c "from defaultplusplus.deform import OPERATORS; \
 
 ---
 
-## 12. Pointers to the manuscript chapter
+## 12. Pointers to the manuscript
 
-| Topic | Location in `../DEFault++.pdf` |
+The DEFault++ manuscript (in preparation) is the scientific reference.
+Section numbers below follow the thesis-chapter numbering.
+
+| Topic | Location in the manuscript |
 |---|---|
 | Introduction + motivating example | Sections 7.1–7.2 |
 | Fault taxonomy + operator catalog | Section 7.3, Tables 7.1, 7.2, Figure 7.3 |
@@ -670,10 +707,14 @@ python -c "from defaultplusplus.deform import OPERATORS; \
 
 ## 13. What's next
 
-The roadmap lives in [`../docs/SPEC.md`](../docs/SPEC.md) §3 (schema
-gaps, runtime product items, benchmark items, out-of-v1 scope). The
-reserved subpackages (`diagnosis/`, `processing/`, `pretrained/`,
-`ui/`) carry placeholder docstrings explaining what each will hold.
+The scope and future extensions live in
+[`../docs/SPEC.md`](../docs/SPEC.md) §3. The runtime
+extractor, the diagnostic model (`diagnosis/`), the single-run normalizer
+(`processing/`), the shipped checkpoints (`pretrained/`), and the
+benchmark download path (`data/`) are all complete. The remaining items
+are the out-of-v1-scope architectures (encoder-decoder, sparse-attention,
+Mixture-of-Experts) and distributed-training signals. The `ui/`
+subpackage is reserved for future CLI helpers.
 
 ---
 
@@ -686,12 +727,14 @@ the repository directly:
 
 ```bibtex
 @software{defaultplusplus,
-  title  = {{DEFault++}: Hierarchical Fault Diagnosis and Runtime Feature
-            Extraction for HuggingFace Transformers},
-  author = {Jahan, Sigma},
-  year   = {2026},
-  url    = {https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging},
-  version = {0.3.0},
-  note   = {Software repository; manuscript in preparation.}
+  title   = {{DEFault++}: Hierarchical Fault Detection and Diagnosis for
+             Transformer Architectures},
+  author  = {Jahan, Sigma and Rajput, Saurabhsingh and Sharma, Tushar and
+             Rahman, Mohammad Masudur},
+  year    = {2026},
+  url      = {https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging},
+  version = {0.4.1},
+  doi     = {10.5281/zenodo.20019817},
+  note    = {Software repository; manuscript in preparation.}
 }
 ```
