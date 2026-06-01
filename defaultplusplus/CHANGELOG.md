@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `defaultplusplus/pretrained/weights/`; new sections cover
   `RuntimeNormalizer`, the `[viz]` extra, and the
   `defaultpp-bench-download` benchmark fetcher (Zenodo DOI
-  `10.5281/zenodo.20018623`); layout tree refreshed to list the new
+  `10.5281/zenodo.20481557`); layout tree refreshed to list the new
   `data/`, `processing/`, `viz/`, and `diagnosis/model.py` modules.
   No code changes vs. 0.4.0; this is a documentation-only release so
   the first PyPI surface (TestPyPI was 0.4.0) describes the package
@@ -189,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check. Cache lives under `$DEFAULTPP_CACHE_DIR` /
   `$XDG_CACHE_HOME/defaultplusplus/` / platform default.
   `BENCH_VERSIONS["v1"]` points at Zenodo record
-  [10.5281/zenodo.20018623](https://doi.org/10.5281/zenodo.20018623).
+  [10.5281/zenodo.20481557](https://doi.org/10.5281/zenodo.20481557).
 - `data/stage_release_bundle.py` builds the published tarball
   (`dist/defaultpp-bench-v1.tar.gz`) with a per-file
   `MANIFEST.sha256`, a tarball-level SHA256 sidecar, and a README.

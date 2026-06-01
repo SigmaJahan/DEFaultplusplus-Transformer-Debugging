@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml)
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20019817.svg)](https://doi.org/10.5281/zenodo.20019817)
-[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20018623.svg)](https://doi.org/10.5281/zenodo.20018623)
+[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20481557.svg)](https://doi.org/10.5281/zenodo.20481557)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](defaultplusplus/LICENSE)
 
 **Hierarchical fault detection and diagnosis for transformer architectures.**

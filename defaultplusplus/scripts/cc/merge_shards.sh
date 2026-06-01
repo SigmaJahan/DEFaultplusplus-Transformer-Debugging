@@ -9,8 +9,8 @@
 #
 # Concatenate per-task shards into the final DEFault-bench files.
 # Produces:
-#   $BENCH_FINAL/encoder_v1_killed_binary.csv
-#   $BENCH_FINAL/decoder_v1_killed_binary.csv
+#   $BENCH_FINAL/encoder_dataset.csv
+#   $BENCH_FINAL/decoder_dataset.csv
 # and the matching parquet copies.
 
 set -euo pipefail

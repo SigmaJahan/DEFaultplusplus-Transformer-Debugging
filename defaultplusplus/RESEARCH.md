@@ -137,10 +137,8 @@ DEFaultplusplus-Transformer-Debugging/
     figures/                                diagrams used across the docs
 
   data/                                     DEFault-bench CSVs (fetched, not committed)
-    encoder_v1_killed_binary.csv            encoder feature traces
-    decoder_v1_killed_binary.csv            decoder feature traces
-    encoder_absolute_filled_labeled.csv     mutation 'killed' labels (encoder)
-    decoder_absolute_filled_labeled.csv     mutation 'killed' labels (decoder)
+    encoder_dataset.csv                     encoder feature traces + mutation killed labels
+    decoder_dataset.csv                     decoder feature traces + mutation killed labels
   results/                                  generated outputs (gitignored)
 ```
 

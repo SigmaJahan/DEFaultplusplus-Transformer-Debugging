@@ -133,7 +133,7 @@ fi
 if [[ ${WITH_TRAIN} -eq 1 ]]; then
   echo ""
   echo "[4/4] 1-epoch training pass on encoder (smoke)"
-  if [[ ! -f "../data/encoder_v1_killed_binary.csv" ]]; then
+  if [[ ! -f "../data/encoder_dataset.csv" ]]; then
     echo "  Skipping: DEFault-bench CSV not found (run benchmark construction first)."
     exit 0
   fi

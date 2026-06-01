@@ -12,11 +12,9 @@ setup:
 
 data-check:
 	@echo "Checking required data files..."
-	@test -f $(DATA_DIR)/encoder_v1_killed_binary.csv || (echo "MISSING: $(DATA_DIR)/encoder_v1_killed_binary.csv" && exit 1)
-	@test -f $(DATA_DIR)/decoder_v1_killed_binary.csv || (echo "MISSING: $(DATA_DIR)/decoder_v1_killed_binary.csv" && exit 1)
-	@test -f $(DATA_DIR)/encoder_absolute_filled_labeled.csv || (echo "MISSING: $(DATA_DIR)/encoder_absolute_filled_labeled.csv" && exit 1)
-	@test -f $(DATA_DIR)/decoder_absolute_filled_labeled.csv || (echo "MISSING: $(DATA_DIR)/decoder_absolute_filled_labeled.csv" && exit 1)
-	@echo "All 4 data files present."
+	@test -f $(DATA_DIR)/encoder_dataset.csv || (echo "MISSING: $(DATA_DIR)/encoder_dataset.csv" && exit 1)
+	@test -f $(DATA_DIR)/decoder_dataset.csv || (echo "MISSING: $(DATA_DIR)/decoder_dataset.csv" && exit 1)
+	@echo "All data files present."
 
 train:
 	$(PYTHON) -m hierarchical_graph_category_rootcause.train --arch both

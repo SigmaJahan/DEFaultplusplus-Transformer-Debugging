@@ -62,7 +62,6 @@ from model import HierarchicalDiagnosisModel
 from losses import hierarchical_loss, compute_detection_weights
 
 DATA_DIR = DATA_ROOT
-ORIGIN_DIR = DATA_ROOT
 RESULTS_DIR = RESULTS_ROOT / "hierarchical_graph_category_rootcause"
 
 
@@ -145,18 +144,8 @@ def load_data(arch):
 
     Category and root-cause labels only apply to killed (faulty) samples.
     """
-    csv = DATA_DIR / f"{arch}_v1_killed_binary.csv"
+    csv = DATA_DIR / f"{arch}_dataset.csv"
     df = pd.read_csv(csv)
-
-    # Merge 'killed' column from origin dataset
-    origin_csv = ORIGIN_DIR / f"{arch}_absolute_filled_labeled.csv"
-    df_origin = pd.read_csv(origin_csv, usecols=["Identifier", "killed"])
-    n_before = len(df)
-    df = df.merge(df_origin, on="Identifier", how="left")
-    assert len(df) == n_before, (
-        f"Merge changed row count ({n_before} -> {len(df)}). "
-        f"Duplicate Identifiers in origin dataset?"
-    )
 
     meta_cols = ["Identifier", "arch", "model_name", "dataset_name", "seed",
                  "is_faulty", "fault_category", "fault_subcategory", "layer_idx",

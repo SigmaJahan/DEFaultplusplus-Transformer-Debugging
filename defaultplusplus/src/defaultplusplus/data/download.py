@@ -1,20 +1,17 @@
 """Bench dataset download + checksum verification.
 
-The function is idempotent: if the cached extract already matches the
-expected SHA256 we skip the download entirely. Only the tarball is
-hashed during transfer; per-file digests are checked against the
-in-bundle ``MANIFEST.sha256`` after extraction.
+The function is idempotent: if the cached extract already exists it is
+returned immediately. Downloads are SHA256-verified when ``sha256`` is
+non-empty; leave it as ``""`` to skip verification (fill it in after
+uploading so users get integrity checking).
 
 Adding a new version is one entry in :data:`BENCH_VERSIONS`. Once you
 publish to Zenodo:
 
-    1. Run ``data/stage_release_bundle.py`` to produce
-       ``dist/defaultpp-bench-v<n>.tar.gz`` and its ``.sha256`` sidecar.
-    2. Upload the tarball to Zenodo, mint a DOI, copy the
-       direct-download URL.
-    3. Paste the URL into the ``url`` field below; paste the SHA256
-       (already in the sidecar) into ``sha256``. Bump
-       ``DEFAULT_VERSION`` if this is the new latest.
+    1. Upload the zip to Zenodo, mint a DOI, copy the direct-download URL.
+    2. Paste the URL into the ``url`` field below.
+    3. Run ``shasum -a 256 <downloaded-file>.zip`` and paste the result
+       into ``sha256``. Bump ``DEFAULT_VERSION`` if this is the new latest.
 """
 from __future__ import annotations
 
@@ -25,6 +22,7 @@ import sys
 import tarfile
 import urllib.error
 import urllib.request
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -52,17 +50,16 @@ class BenchVersion:
 BENCH_VERSIONS: dict[str, BenchVersion] = {
     "v1": BenchVersion(
         name="v1",
-        url="https://zenodo.org/records/20018623/files/defaultpp-bench-v1.tar.gz",
-        sha256="da63b9b52c58011ec3423faf4d0037f6d2e8a575230391c5572929a6f2be2cb3",
+        url="https://zenodo.org/records/20481557/files/DEFault-Bench.zip",
+        # Run: shasum -a 256 DEFault-Bench.zip  and paste the result here.
+        sha256="",
         license="CC-BY-4.0",
         description=(
-            "DEFault++ benchmark v1 — 6,042 encoder rows + 2,535 decoder "
-            "rows of paper-aligned feature CSVs covering 35 model-task "
-            "fine-tunes. Includes per-task source CSVs, merged "
-            "trainer-ready CSVs, feature dictionary, and integrity "
-            "manifest. Synthetic-zero padding marked with the "
-            "``__synthetic_zero`` suffix; see README inside the bundle. "
-            "DOI: 10.5281/zenodo.20018623"
+            "DEFault++ benchmark v1 — encoder_dataset.csv (3,196 rows) "
+            "and decoder_dataset.csv (2,360 rows). Each row is one "
+            "fine-tuning run with runtime features and mutation-testing "
+            "labels (killed, fault_category, fault_subcategory). "
+            "DOI: 10.5281/zenodo.20481557"
         ),
     ),
 }
@@ -224,12 +221,37 @@ def _extract_tarball(tarball: Path, dest_root: Path) -> Path:
                     f"refusing to extract unsafe path: {mname!r}"
                 )
             if extract_root is None:
-                # Top-level entry is the bundle directory.
                 extract_root = dest_root / Path(mname).parts[0]
         tar.extractall(dest_root)
     if extract_root is None:
         raise DownloadError(f"empty tarball {tarball}")
     return extract_root
+
+
+def _extract_zip(archive: Path, dest_root: Path) -> Path:
+    """Safely extract ``archive`` (zip) into ``dest_root``, return extract root.
+
+    Refuses any member with an absolute path or ``..`` segment.
+    Returns the top-level directory inside the zip, or ``dest_root``
+    directly if the zip has no common top-level folder.
+    """
+    dest_root.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive, "r") as zf:
+        for name in zf.namelist():
+            if name.startswith("/") or ".." in Path(name).parts:
+                raise DownloadError(
+                    f"refusing to extract unsafe path: {name!r}"
+                )
+        zf.extractall(dest_root)
+        names = zf.namelist()
+
+    # Determine the extract root: common top-level directory, if any.
+    top_dirs = {Path(n).parts[0] for n in names if Path(n).parts}
+    if len(top_dirs) == 1:
+        candidate = dest_root / next(iter(top_dirs))
+        if candidate.is_dir():
+            return candidate
+    return dest_root
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -293,63 +315,57 @@ def download_bench(
         )
 
     root = (cache_dir or _cache_root()) / "bench" / version
-    extract_root = root / f"defaultpp-bench-{version}"
-    tarball = root / f"defaultpp-bench-{version}.tar.gz"
+    archive_name = url.split("/")[-1]
+    archive = root / archive_name
+    is_zip = archive_name.endswith(".zip")
 
-    # ``force=True`` wipes the entire version directory so we re-download
-    # AND re-extract from scratch. We can't only wipe ``extract_root``
-    # because the tarball's top-level dir name may differ from the
-    # canonical ``defaultpp-bench-{version}`` (e.g. private test bundles).
     if force and root.exists():
         shutil.rmtree(root)
 
-    # Short-circuit: cached extract is intact and matches the manifest.
-    # The tarball's top-level dir might not match the canonical name
-    # (e.g. test bundles, private mirrors), so probe for any directory
-    # under ``root`` that contains a MANIFEST.sha256.
+    # Short-circuit: cached extract already present.
     if not force and root.is_dir():
         candidate = _existing_extract_root(root)
         if candidate is not None:
-            try:
-                if verify_manifest:
+            if not is_zip and verify_manifest:
+                try:
                     _verify_manifest(candidate)
+                except DownloadError:
+                    shutil.rmtree(candidate, ignore_errors=True)
+                else:
+                    return candidate
+            else:
                 return candidate
-            except DownloadError:
-                # Cache is corrupt; fall through to re-download.
-                shutil.rmtree(candidate, ignore_errors=True)
 
-    # If a tarball is already on disk and hashes correctly, skip the network.
-    if tarball.exists():
-        got = _sha256_file(tarball)
+    # If the archive is already on disk and hashes correctly, skip the network.
+    if archive.exists() and expected_sha:
+        if _sha256_file(archive) != expected_sha:
+            archive.unlink()
+
+    if not archive.exists():
+        _download_to(url, archive, progress=progress)
+
+    if expected_sha:
+        got = _sha256_file(archive)
         if got != expected_sha:
-            tarball.unlink()
+            archive.unlink(missing_ok=True)
+            raise DownloadError(
+                f"sha256 mismatch on download from {url}: "
+                f"expected {expected_sha[:12]}…, got {got[:12]}…"
+            )
 
-    if not tarball.exists():
-        _download_to(url, tarball, progress=progress)
-
-    got = _sha256_file(tarball)
-    if got != expected_sha:
-        tarball.unlink(missing_ok=True)
-        raise DownloadError(
-            f"sha256 mismatch on download from {url}: "
-            f"expected {expected_sha[:12]}…, got {got[:12]}…"
-        )
-
-    # Clear any pre-existing extract under ``root`` (besides the tarball
-    # itself) so a stale extract from a previous run can't shadow the
-    # fresh content.
+    # Clear any pre-existing extract under ``root`` (besides the archive).
     for child in root.iterdir():
-        if child == tarball:
+        if child == archive:
             continue
         if child.is_dir():
             shutil.rmtree(child)
         else:
             child.unlink()
 
-    actual_root = _extract_tarball(tarball, root)
-    if actual_root != extract_root:
-        # Tarball top-level directory name differs from convention; use it.
-        extract_root = actual_root
-    if verify_manifest:
-        _verify_manifest(extract_root)
+    if is_zip:
+        extract_root = _extract_zip(archive, root)
+    else:
+        extract_root = _extract_tarball(archive, root)
+        if verify_manifest:
+            _verify_manifest(extract_root)
     return extract_root

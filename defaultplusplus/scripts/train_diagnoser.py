@@ -15,10 +15,10 @@ stable schema.
 
 Usage:
 
-    # Real run (after the benchmark has produced data/encoder.csv):
+    # Real run (after the benchmark has produced the dataset CSV):
     python scripts/train_diagnoser.py \\
         --arch encoder \\
-        --csv data/encoder_v1_killed_binary.csv \\
+        --csv data/encoder_dataset.csv \\
         --output src/defaultplusplus/pretrained/weights/encoder.pt
 
     # Synthetic smoke run for development:

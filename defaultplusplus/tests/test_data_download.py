@@ -81,7 +81,7 @@ def test_unpublished_version_raises_typed_error(monkeypatch, tmp_path):
     """A version with url=None must give callers an actionable error.
 
     Stub a pretend-future-version with no upload URL into the registry
-    so the published v1 record (https://doi.org/10.5281/zenodo.20018623)
+    so the published v1 record (https://doi.org/10.5281/zenodo.20481557)
     keeps working in the rest of the suite.
     """
     monkeypatch.setenv("DEFAULTPP_CACHE_DIR", str(tmp_path))

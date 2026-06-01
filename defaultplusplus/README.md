@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SigmaJahan/DEFaultplusplus-Transformer-Debugging/actions/workflows/ci.yml)
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20019817.svg)](https://doi.org/10.5281/zenodo.20019817)
-[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20018623.svg)](https://doi.org/10.5281/zenodo.20018623)
+[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20481557.svg)](https://doi.org/10.5281/zenodo.20481557)
 
 Hierarchical fault diagnosis and runtime feature extraction for
 HuggingFace transformers.
@@ -121,7 +121,7 @@ Individual plots (`plot_diagnosis`, `plot_group_importance`,
 
 ### Public benchmark dataset
 
-The training data CSVs (~360 MB) live on Zenodo, not in the wheel.
+The training data CSVs live on Zenodo, not in the wheel.
 Fetch them on demand:
 
 ```bash
@@ -135,7 +135,7 @@ from defaultplusplus.data import download_bench
 path = download_bench(version="v1")             # checksum-verified, idempotent
 ```
 
-DOI: [10.5281/zenodo.20018623](https://doi.org/10.5281/zenodo.20018623).
+DOI: [10.5281/zenodo.20481557](https://doi.org/10.5281/zenodo.20481557).
 
 ### `FeatureExtractor` lifecycle
 

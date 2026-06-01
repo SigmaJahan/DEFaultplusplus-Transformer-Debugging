@@ -14,8 +14,8 @@ identifiers:
     value: 10.5281/zenodo.20019817
     description: Code release v0.4.1 archived on Zenodo.
   - type: doi
-    value: 10.5281/zenodo.20018623
-    description: DEFault++ benchmark v1 dataset on Zenodo (paper-aligned feature CSVs).
+    value: 10.5281/zenodo.20481557
+    description: DEFault++ benchmark dataset on Zenodo (encoder_dataset.csv, decoder_dataset.csv).
 keywords:
   - transformer
   - fault diagnosis

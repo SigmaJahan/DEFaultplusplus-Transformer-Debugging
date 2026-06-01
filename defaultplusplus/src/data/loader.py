@@ -157,9 +157,9 @@ def prepare_dataset_from_csv(data_path: str, direct_csv: bool = False,
         pkl_name = Path(data_path).stem
         csv_dir = Path(data_path).parent
         if "enc" in pkl_name:
-            csv_path = csv_dir / "encoder_v1_killed_binary.csv"
+            csv_path = csv_dir / "encoder_dataset.csv"
         else:
-            csv_path = csv_dir / "decoder_v1_killed_binary.csv"
+            csv_path = csv_dir / "decoder_dataset.csv"
         is_detection = "detection" in pkl_name
 
     target_col = "fault_category"

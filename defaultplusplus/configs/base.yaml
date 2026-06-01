@@ -1,10 +1,8 @@
 data:
   # Paths are resolved from the repository root.
   data_dir: data
-  encoder_csv: data/encoder_v1_killed_binary.csv
-  decoder_csv: data/decoder_v1_killed_binary.csv
-  encoder_origin_csv: data/encoder_absolute_filled_labeled.csv
-  decoder_origin_csv: data/decoder_absolute_filled_labeled.csv
+  encoder_csv: data/encoder_dataset.csv
+  decoder_csv: data/decoder_dataset.csv
 
 cv:
   n_splits: 5
