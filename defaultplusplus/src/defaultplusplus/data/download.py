@@ -51,8 +51,7 @@ BENCH_VERSIONS: dict[str, BenchVersion] = {
     "v1": BenchVersion(
         name="v1",
         url="https://zenodo.org/records/20481557/files/DEFault-Bench.zip",
-        # Run: shasum -a 256 DEFault-Bench.zip  and paste the result here.
-        sha256="",
+        sha256="acdfc166a90428a9c44020308081d38b904db888a3bdb38d788079ee98e8fc57",
         license="CC-BY-4.0",
         description=(
             "DEFault++ benchmark v1 — encoder_dataset.csv (3,196 rows) "
